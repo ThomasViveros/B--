@@ -1,0 +1,34 @@
+
+program      := { decl } EOF ;
+decl         := funDecl | varDecl ;
+funDecl      := "fn" IDENT "(" [ params ] ")" [ "->" type ] block ;
+params       := param { "," param } ;
+param        := IDENT ":" type ;
+varDecl      := "let" IDENT [ ":" type ] [ "=" expr ] ";" ;
+
+block        := "{" { stmt } "}" ;
+stmt         := varDecl | exprStmt | ifStmt | whileStmt | returnStmt ;
+exprStmt     := expr ";" ;
+ifStmt       := "if" "(" expr ")" stmt [ "else" stmt ] ;
+whileStmt    := "while" "(" expr ")" stmt ;
+returnStmt   := "return" [ expr ] ";" ;
+
+expr	:=	assignment ;
+assignment :=	IDENT "=" assignment | logic_or ;
+logic_or :=	logic_and { "||" logic_and } ;
+logic_and :=	equality { "&&" equality} ;
+equality :=	comparison { ("==" | "!=") comparison }
+comparison :=	term { ( "<" | ">" | "<=" | ">=" ) term } ;
+term	:=	factor { ("+" | "-") factor };
+factor	:=	unary { ("*" | "/") unary };
+unary	:=	("!" | "-") unary | primary ;
+primary	:=	NUMBER | STRING | "true" | "false" | IDENT | "(" expr ")"
+
+
+type	:=	"int32" | "float64" | "bool" | IDENT ;
+
+
+
+optional = []
+choice = |
+repetition = {}

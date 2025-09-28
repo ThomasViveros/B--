@@ -1,0 +1,11 @@
+Goals:
+
+We want to be a more user freindly C++. Backwards compatable with c++?
+
+Be a predictable, consistant language. Has language rules and no exceptions to them.
+
+EG. Certain types pass by reference by default and others dont is a no no.
+types that are different depending on the system like int that could be 32 or 64 ect is a no no
+
+
+The idea of the language is to be intuitive.
