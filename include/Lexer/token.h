@@ -2,7 +2,10 @@
 
 #include <cstdint>
 //#include <vector>
+#include <map>
 #include <string>
+#include <string_view>
+namespace Brain {
 
 enum class TOK_TYPES : uint32_t {
   UNK,
@@ -54,9 +57,18 @@ class Token {
 public:
   Token() {}
   Token(TOK_TYPES type) : TokenType(type) {}
-  Token(TOK_TYPES type, std::string literal)
+  Token(TOK_TYPES type, std::string_view literal)
       : TokenType(type), Literal(literal) {}
+  static Token DetOpTok(std::string_view OpLiteral) {
+    // Do binary search of operator tokens. Remember to do constexpr to sort the
+    // tokens Also remember to have a special file for tokens
+    return Token();
+  }
   TOK_TYPES TokenType = TOK_TYPES::UNK;
   // std::vector<char> Literal;
   std::string Literal;
+
+private:
+  std::map<std::string, TOK_TYPES> TokenMap = {<std::string(), TOK_TYPES::UNK>};
 };
+} // namespace Brain

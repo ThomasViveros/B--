@@ -29,6 +29,9 @@ auto it_tok =
 should
   //do this in the parser? For example what if we have "func"
 */
+
+bool Lexer::issymbol(char c) { return !(isalnum(c) || isspace(c)); }
+
 char Lexer::March() {
   if (start + ++HeadIndx <= end) {
     return start[HeadIndx];
@@ -65,18 +68,21 @@ void Lexer::MarchNum() {
 }
 
 void Lexer::MarchSymbols() {
-  // We want to continuously lex symbols. until there is a terminal symbol.
-  // For example, a++ is valid. But " is terminal because there is no token that
-  // extends that, if that makes sence.
-  //!(isalnum(c) || isspace(c));
-
-  set<string> ops = {"+", "++"};
 
   char curChar = GetCurrChar();
-  while (!(isalnum(curChar) || isspace(curChar))) {
+  while (issymbol(curChar)) {
+    ChunkBuffer.push_back(curChar);
     int count = TrieTree.prefixCount(ChunkBuffer.begin(), ChunkBuffer.end());
+    if (count == 1) {
+      TokenBuffer.push_back(
+          Token::DetOpTok(string_view(ChunkBuffer.data(), ChunkBuffer.size())));
+      break;
+    } else if (count == 0) {
+      // Invalid syntax, TODO: DEBUGGER
+    }
+    curChar = March();
   }
-  ChunkBuffer.push_back(curChar);
+  ChunkBuffer.clear();
 }
 void Lexer::MarchBlank() {
   char curChar = March();
@@ -98,9 +104,8 @@ void Lexer::Lex(char *start, char *end) {
       MarchNum();
     } else if (isblank(curChar)) {
       MarchBlank();
-    } else if (/*is special character*/) {
+    } else if (issymbol(curChar)) {
+      MarchSymbols();
     }
   }
 }
-
-//  int32 i = 10++;

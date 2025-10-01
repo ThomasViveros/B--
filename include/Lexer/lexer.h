@@ -61,6 +61,9 @@ public:
 
 protected:
   void Lex(char *start, char *end);
+
+  bool issymbol(char c);
+
   char GetCurrChar();
   // Gets the next character in the file
   char March();
