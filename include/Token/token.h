@@ -1,10 +1,10 @@
 #pragma once
 
 #include <cstdint>
-//#include <vector>
-#include <map>
+// #include <vector>
 #include <string>
 #include <string_view>
+
 namespace Brain {
 
 enum class TOK_TYPES : uint32_t {
@@ -67,8 +67,5 @@ public:
   TOK_TYPES TokenType = TOK_TYPES::UNK;
   // std::vector<char> Literal;
   std::string Literal;
-
-private:
-  std::map<std::string, TOK_TYPES> TokenMap = {<std::string(), TOK_TYPES::UNK>};
 };
 } // namespace Brain

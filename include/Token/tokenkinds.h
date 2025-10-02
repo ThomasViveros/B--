@@ -11,11 +11,9 @@
 ///
 //===----------------------------------------------------------------------===//
 #pragma once
+#include <cassert>
 
-#include "llvm/ADT/DenseMapInfo.h"
-#include "llvm/Support/Compiler.h"
-
-namespace clang {
+namespace Brain {
 
 namespace tok {
 
@@ -24,14 +22,6 @@ enum TokenKind : unsigned short {
 #define TOK(X) X,
 #include "Token/tokenkinds.def"
   NUM_TOKENS
-};
-
-/// Provides a namespace for preprocessor keywords which start with a
-/// '#' at the beginning of the line.
-enum PPKeywordKind {
-#define PPKEYWORD(X) pp_##X,
-#include "Token/tokenkinds.def"
-  NUM_PP_KEYWORDS
 };
 
 /// Provides a namespace for Objective-C keywords which start with
@@ -58,7 +48,7 @@ enum OnOffSwitch { OOS_ON, OOS_OFF, OOS_DEFAULT };
 ///
 /// The name of a token will be an internal name (such as "l_square")
 /// and should not be used as part of diagnostic messages.
-const char *getTokenName(TokenKind Kind) LLVM_READNONE;
+const char *getTokenName(TokenKind Kind);
 
 /// Determines the spelling of simple punctuation tokens like
 /// '!' or '%', and returns NULL for literal and annotation tokens.
@@ -67,14 +57,14 @@ const char *getTokenName(TokenKind Kind) LLVM_READNONE;
 /// and will not produce any alternative spellings (e.g., a
 /// digraph). For the actual spelling of a given Token, use
 /// Preprocessor::getSpelling().
-const char *getPunctuatorSpelling(TokenKind Kind) LLVM_READNONE;
+const char *getPunctuatorSpelling(TokenKind Kind) ;
 
 /// Determines the spelling of simple keyword and contextual keyword
 /// tokens like 'int' and 'dynamic_cast'. Returns NULL for other token kinds.
-const char *getKeywordSpelling(TokenKind Kind) LLVM_READNONE;
+const char *getKeywordSpelling(TokenKind Kind) ;
 
 /// Returns the spelling of preprocessor keywords, such as "else".
-const char *getPPKeywordSpelling(PPKeywordKind Kind) LLVM_READNONE;
+const char *getPPKeywordSpelling(PPKeywordKind Kind) ;
 
 /// Return true if this is a raw identifier or an identifier kind.
 inline bool isAnyIdentifier(TokenKind K) {
@@ -114,32 +104,13 @@ bool isAnnotation(TokenKind K);
 /// Return true if this is an annotation token representing a pragma.
 bool isPragmaAnnotation(TokenKind K);
 
+/*
 inline constexpr bool isRegularKeywordAttribute(TokenKind K) {
   return (false
 #define KEYWORD_ATTRIBUTE(X, ...) || (K == tok::kw_##X)
 #include "clang/Basic/RegularKeywordAttrInfo.inc"
   );
-}
+}*/
 
 } // end namespace tok
-} // end namespace clang
-
-namespace llvm {
-template <> struct DenseMapInfo<clang::tok::PPKeywordKind> {
-  static inline clang::tok::PPKeywordKind getEmptyKey() {
-    return clang::tok::PPKeywordKind::pp_not_keyword;
-  }
-  static inline clang::tok::PPKeywordKind getTombstoneKey() {
-    return clang::tok::PPKeywordKind::NUM_PP_KEYWORDS;
-  }
-  static unsigned getHashValue(const clang::tok::PPKeywordKind &Val) {
-    return static_cast<unsigned>(Val);
-  }
-  static bool isEqual(const clang::tok::PPKeywordKind &LHS,
-                      const clang::tok::PPKeywordKind &RHS) {
-    return LHS == RHS;
-  }
-};
-} // namespace llvm
-
-#endif
+} // end namespace Brain

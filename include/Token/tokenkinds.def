@@ -22,18 +22,6 @@
 #ifndef KEYWORD
 #define KEYWORD(X,Y) TOK(kw_ ## X)
 #endif
-#ifndef CXX11_KEYWORD
-#define CXX11_KEYWORD(X,Y) KEYWORD(X,KEYCXX11|(Y))
-#endif
-#ifndef CXX20_KEYWORD
-#define CXX20_KEYWORD(X,Y) KEYWORD(X,KEYCXX20|(Y))
-#endif
-#ifndef C99_KEYWORD
-#define C99_KEYWORD(X,Y) KEYWORD(X,KEYC99|(Y))
-#endif
-#ifndef C23_KEYWORD
-#define C23_KEYWORD(X,Y) KEYWORD(X,KEYC23|(Y))
-#endif
 #ifndef COROUTINES_KEYWORD
 #define COROUTINES_KEYWORD(X) CXX20_KEYWORD(X,KEYCOROUTINES)
 #endif
@@ -58,9 +46,6 @@
 #ifndef UNARY_EXPR_OR_TYPE_TRAIT
 #define UNARY_EXPR_OR_TYPE_TRAIT(I,E,K) KEYWORD(I,K)
 #endif
-#ifndef CXX11_UNARY_EXPR_OR_TYPE_TRAIT
-#define CXX11_UNARY_EXPR_OR_TYPE_TRAIT(I,E,K) CXX11_KEYWORD(I,K)
-#endif
 #ifndef EXPRESSION_TRAIT
 #define EXPRESSION_TRAIT(I,E,K) KEYWORD(I,K)
 #endif
@@ -70,12 +55,6 @@
 
 #ifndef ALIAS
 #define ALIAS(X,Y,Z)
-#endif
-#ifndef PPKEYWORD
-#define PPKEYWORD(X)
-#endif
-#ifndef CXX_KEYWORD_OPERATOR
-#define CXX_KEYWORD_OPERATOR(X,Y)
 #endif
 #ifndef OBJC_AT_KEYWORD
 #define OBJC_AT_KEYWORD(X)
@@ -97,54 +76,8 @@
 // Preprocessor keywords.
 //===----------------------------------------------------------------------===//
 
-// These have meaning after a '#' at the start of a line. These define enums in
-// the tok::pp_* namespace.  Note that IdentifierInfo::getPPKeywordID must be
-// manually updated if something is added here.
-PPKEYWORD(not_keyword)
+//We dont use Preprocessor keywords
 
-// C99 6.10.1 - Conditional Inclusion.
-PPKEYWORD(if)
-PPKEYWORD(ifdef)
-PPKEYWORD(ifndef)
-PPKEYWORD(elif)
-PPKEYWORD(elifdef)
-PPKEYWORD(elifndef)
-PPKEYWORD(else)
-PPKEYWORD(endif)
-PPKEYWORD(defined)
-
-// C99 6.10.2 - Source File Inclusion.
-PPKEYWORD(include)
-PPKEYWORD(__include_macros)
-
-// C99 6.10.3 - Macro Replacement.
-PPKEYWORD(define)
-PPKEYWORD(undef)
-
-// C99 6.10.4 - Line Control.
-PPKEYWORD(line)
-
-// C99 6.10.5 - Error Directive.
-PPKEYWORD(error)
-
-// C99 6.10.6 - Pragma Directive.
-PPKEYWORD(pragma)
-
-// C23 & C++26 #embed
-PPKEYWORD(embed)
-
-// GNU Extensions.
-PPKEYWORD(import)
-PPKEYWORD(include_next)
-PPKEYWORD(warning)
-PPKEYWORD(ident)
-PPKEYWORD(sccs)
-PPKEYWORD(assert)
-PPKEYWORD(unassert)
-
-// Clang extensions
-PPKEYWORD(__public_macro)
-PPKEYWORD(__private_macro)
 
 //===----------------------------------------------------------------------===//
 // Language keywords.
@@ -187,8 +120,8 @@ TOK(utf32_char_constant) // U'a'
 TOK(string_literal)      // "foo"
 TOK(wide_string_literal) // L"foo"
 
-// C11 6.4.7: Header Names
-TOK(header_name)         // <foo>, or "foo" lexed as a header-name
+// Module Name
+TOK(module_name)         // <foo>, or "foo" lexed as a header-name
 
 // C++11 String Literals.
 TOK(utf8_string_literal) // u8"foo"
@@ -385,61 +318,9 @@ KEYWORD(using                       , KEYCXX)
 KEYWORD(virtual                     , KEYCXX)
 KEYWORD(wchar_t                     , WCHARSUPPORT)
 
-// C++ 2.5p2: Alternative Representations.
-CXX_KEYWORD_OPERATOR(and     , ampamp)
-CXX_KEYWORD_OPERATOR(and_eq  , ampequal)
-CXX_KEYWORD_OPERATOR(bitand  , amp)
-CXX_KEYWORD_OPERATOR(bitor   , pipe)
-CXX_KEYWORD_OPERATOR(compl   , tilde)
-CXX_KEYWORD_OPERATOR(not     , exclaim)
-CXX_KEYWORD_OPERATOR(not_eq  , exclaimequal)
-CXX_KEYWORD_OPERATOR(or      , pipepipe)
-CXX_KEYWORD_OPERATOR(or_eq   , pipeequal)
-CXX_KEYWORD_OPERATOR(xor     , caret)
-CXX_KEYWORD_OPERATOR(xor_eq  , caretequal)
-
-// C99 Keywords.
-C99_KEYWORD(restrict                    , 0)
-C99_KEYWORD(inline                      , KEYCXX|KEYGNU)
-
-
-// C++11 keywords
-CXX11_KEYWORD(alignas               , KEYC23)
-// alignof and _Alignof return the required ABI alignment
-CXX11_UNARY_EXPR_OR_TYPE_TRAIT(alignof, AlignOf, KEYC23)
-CXX11_KEYWORD(char16_t              , KEYNOMS18)
-CXX11_KEYWORD(char32_t              , KEYNOMS18)
-CXX11_KEYWORD(constexpr             , KEYC23)
-CXX11_KEYWORD(decltype              , 0)
-CXX11_KEYWORD(noexcept              , 0)
-CXX11_KEYWORD(nullptr               , KEYC23)
-CXX11_KEYWORD(static_assert         , KEYMSCOMPAT|KEYC23)
-CXX11_KEYWORD(thread_local          , KEYC23)
-
-// C++20 / coroutines keywords
-COROUTINES_KEYWORD(co_await)
-COROUTINES_KEYWORD(co_return)
-COROUTINES_KEYWORD(co_yield)
-
 // C++20 keywords
 MODULES_KEYWORD(module)
 MODULES_KEYWORD(import)
-
-// C++20 keywords.
-CXX20_KEYWORD(consteval             , 0)
-CXX20_KEYWORD(constinit             , 0)
-CXX20_KEYWORD(concept               , 0)
-CXX20_KEYWORD(requires              , 0)
-
-// Not a CXX20_KEYWORD because it is disabled by -fno-char8_t.
-KEYWORD(char8_t                     , CHAR8SUPPORT)
-
-// C11 Extension
-KEYWORD(_Float16                    , KEYALL)
-
-// C23 keywords
-C23_KEYWORD(typeof                  , KEYGNU)
-C23_KEYWORD(typeof_unqual           , 0)
 
 // ISO/IEC JTC1 SC22 WG14 N1169 Extension
 KEYWORD(_Accum                      , KEYFIXEDPOINT)
@@ -1041,11 +922,8 @@ ANNOTATION(embed)
 #undef ANNOTATION
 #undef TESTING_KEYWORD
 #undef OBJC_AT_KEYWORD
-#undef CXX_KEYWORD_OPERATOR
-#undef PPKEYWORD
 #undef ALIAS
 #undef EXPRESSION_TRAIT
-#undef CXX11_UNARY_EXPR_OR_TYPE_TRAIT
 #undef UNARY_EXPR_OR_TYPE_TRAIT
 #undef ARRAY_TYPE_TRAIT
 #undef TYPE_TRAIT_N
@@ -1053,15 +931,10 @@ ANNOTATION(embed)
 #undef TYPE_TRAIT_1
 #undef TYPE_TRAIT
 #undef MODULES_KEYWORD
-#undef CXX20_KEYWORD
-#undef CXX11_KEYWORD
 #undef KEYWORD
 #undef PUNCTUATOR
 #undef TOK
-#undef C99_KEYWORD
-#undef C23_KEYWORD
 #undef NOTABLE_IDENTIFIER
-#
 
 
 #undef TOK_KEYWORD

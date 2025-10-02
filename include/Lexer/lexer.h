@@ -1,18 +1,10 @@
 #ifndef BRAIN_LEXER_H
 #define BRAIN_LEXER_H
 
-#include "token.h"
+#include "Token/token.h"
 #include <cstdint>
 #include <unordered_map>
 #include <vector>
-/*TODO
- * Create token struct
- *
- *
- * Create march function
- *
- *
- */
 namespace Brain {
 
 struct TrieNode {
