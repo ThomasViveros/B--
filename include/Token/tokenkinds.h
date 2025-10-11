@@ -24,14 +24,6 @@ enum TokenKind : unsigned short {
   NUM_TOKENS
 };
 
-/// Provides a namespace for Objective-C keywords which start with
-/// an '@'.
-enum ObjCKeywordKind {
-#define OBJC_AT_KEYWORD(X) objc_##X,
-#include "Token/tokenkinds.def"
-  NUM_OBJC_KEYWORDS
-};
-
 /// Provides a namespace for notable identifers such as float_t and
 /// double_t.
 enum NotableIdentifierKind {
