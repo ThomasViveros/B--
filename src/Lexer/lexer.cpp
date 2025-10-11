@@ -11,12 +11,6 @@
 
 using namespace std;
 using namespace Brain;
-
-const map<string, TOK_TYPES> &GetTokenMap() {
-  static map<std::string, TOK_TYPES> TokenMap = {{"func", TOK_TYPES::FUNC},
-                                                 {"void", TOK_TYPES::VOID}};
-  return TokenMap;
-}
 /*
 auto it_tok =
       GetTokenMap().find(string(ChunkBuffer.begin(), ChunkBuffer.end()));

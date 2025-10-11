@@ -1,10 +1,11 @@
 
 program      := { decl } EOF ;
-decl         := funDecl | varDecl ;
-funDecl      := "fn" IDENT "(" [ params ] ")" [ "->" type ] block ;
-params       := param { "," param } ;
-param        := IDENT ":" type ;
+decl         := importDecl | funDecl | varDecl ;
+importDecl   := "import" IDENT ";" ;
+funDecl      := ["pub"] type IDENT "(" [ params ] ")" block ;
 varDecl      := "let" IDENT [ ":" type ] [ "=" expr ] ";" ;
+params       := param { "," param } ;
+param        := type IDENT;
 
 block        := "{" { stmt } "}" ;
 stmt         := varDecl | exprStmt | ifStmt | whileStmt | returnStmt ;
@@ -32,3 +33,20 @@ type	:=	"int32" | "float64" | "bool" | IDENT ;
 optional = []
 choice = |
 repetition = {}
+
+EG:
+
+import MyModule;
+
+class MyClass {
+
+public:
+
+pub int32 MyVariable = //Optional pub keyword, could just use public:
+
+void MyFunction(MyType a){
+  if (a.IsTrue()){
+    return;
+  }
+}
+}
