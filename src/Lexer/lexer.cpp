@@ -1,18 +1,16 @@
 #include "Lexer/lexer.h"
 #include "Token/token.h"
 #include "Token/tokenkinds.h"
-#include <algorithm>
-#include <array>
+#include "Lexer/IdentifierTable.h"
 #include <cctype>
 #include <iostream>
-#include <map>
-#include <set>
 #include <string>
 #include <string_view>
 
 using namespace std;
 using namespace Brain;
 using namespace tok;
+
 bool Lexer::issymbol(char c) { return !(isalnum(c) || isspace(c)); }
 
 char Lexer::March() {
@@ -24,8 +22,8 @@ char Lexer::March() {
 }
 
 char Lexer::GetCurrChar() { return start[HeadIndx]; }
-void Lexer::GenMarch(bool (*func)(char), TokenKind tok,
-                     bool shouldSaveLiteral) {
+
+void Lexer::GenMarch(bool (*func)(char)) {
   char curChar = GetCurrChar();
   while (func(curChar) && !bCompletedLex) {
     ChunkBuffer.push_back(curChar);
@@ -34,10 +32,12 @@ void Lexer::GenMarch(bool (*func)(char), TokenKind tok,
 }
 void Lexer::MarchWord() {
   auto func = [](char c) -> bool { return isalnum(c); };
-  GenMarch(func, TOK_TYPES::WORD, true);
-  // TODO: We have to determine if this word is a keyword or an identifier
-  if (/*Use lookup to determine if this is a keyword*/) {
 
+  GenMarch(func);
+
+  TokenKind keywordToken = unknown;
+  if (IdentifierTable::GetIdentifierTable().IsKeyword(std::string_view(ChunkBuffer.data(),ChunkBuffer.size()),keywordToken)) {
+    TokenBuffer.push_back(Token(keywordToken));
   } else {
     // identifier
     TokenBuffer.push_back(Token(
@@ -47,8 +47,27 @@ void Lexer::MarchWord() {
 }
 
 void Lexer::MarchNum() {
-  auto func = [](char c) -> bool { return isdigit(c); };
-  GenMarch(func, TOK_TYPES::DIGIT, true);
+  //Number may be int or float, accept a single period and determine actual literal type during
+  //semantic analysis.
+
+  char curChar = GetCurrChar();
+  bool bHasPeriodBeenFound = false;
+  bool bIsPeriod = false;
+
+  while (isdigit(curChar) || (bIsPeriod && !bHasPeriodBeenFound) && !bCompletedLex) {
+    bIsPeriod = curChar == '.';
+
+    ChunkBuffer.push_back(curChar);
+    curChar = March();
+
+    if (bIsPeriod) {
+      bHasPeriodBeenFound = true;
+    }
+  }
+
+  TokenBuffer.push_back(Token(TokenKind::numeric_constant, string(ChunkBuffer.begin(), ChunkBuffer.end())));
+
+  ChunkBuffer.clear();
 }
 
 void Lexer::MarchSymbols() {

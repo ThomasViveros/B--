@@ -60,7 +60,7 @@ protected:
   char GetCurrChar();
   // Gets the next character in the file
   char March();
-  void GenMarch(bool (*func)(char), tok::TokenKind tok, bool shouldSaveLiteral);
+  void GenMarch(bool (*func)(char));
   void MarchWord();
   void MarchNum();
   void MarchSymbols();
