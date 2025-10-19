@@ -1,7 +1,7 @@
 #pragma once
 
+#include "tokenkinds.h"
 #include <cstdint>
-// #include <vector>
 #include <string>
 #include <string_view>
 
@@ -56,15 +56,15 @@ enum class TOK_TYPES : uint32_t {
 class Token {
 public:
   Token() {}
-  Token(TOK_TYPES type) : TokenType(type) {}
-  Token(TOK_TYPES type, std::string_view literal)
+  Token(tok::TokenKind type) : TokenType(type) {}
+  Token(tok::TokenKind type, std::string_view literal)
       : TokenType(type), Literal(literal) {}
   static Token DetOpTok(std::string_view OpLiteral) {
     // Do binary search of operator tokens. Remember to do constexpr to sort the
     // tokens Also remember to have a special file for tokens
     return Token();
   }
-  TOK_TYPES TokenType = TOK_TYPES::UNK;
+  tok::TokenKind TokenType = tok::TokenKind::unknown;
   // std::vector<char> Literal;
   std::string Literal;
 };

@@ -2,6 +2,7 @@
 #define BRAIN_LEXER_H
 
 #include "Token/token.h"
+#include "Token/tokenkinds.h"
 #include <cstdint>
 #include <unordered_map>
 #include <vector>
@@ -59,7 +60,7 @@ protected:
   char GetCurrChar();
   // Gets the next character in the file
   char March();
-  void GenMarch(bool (*func)(char), TOK_TYPES tok, bool shouldSaveLiteral);
+  void GenMarch(bool (*func)(char), tok::TokenKind tok, bool shouldSaveLiteral);
   void MarchWord();
   void MarchNum();
   void MarchSymbols();

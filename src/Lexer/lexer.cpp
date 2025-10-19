@@ -1,5 +1,6 @@
 #include "Lexer/lexer.h"
-#include "Lexer/token.h"
+#include "Token/token.h"
+#include "Token/tokenkinds.h"
 #include <algorithm>
 #include <array>
 #include <cctype>
@@ -11,19 +12,7 @@
 
 using namespace std;
 using namespace Brain;
-/*
-auto it_tok =
-      GetTokenMap().find(string(ChunkBuffer.begin(), ChunkBuffer.end()));
-  // Determine if this word is a keyword
-  if (it_tok != GetTokenMap().end()) {
-    TokenBuffer.push_back(Token(it_tok->second));
-    ChunkBuffer.clear();
-  }
-  //todo If the word is not a keyword, it is a user defined variable? Maybe we
-should
-  //do this in the parser? For example what if we have "func"
-*/
-
+using namespace tok;
 bool Lexer::issymbol(char c) { return !(isalnum(c) || isspace(c)); }
 
 char Lexer::March() {
@@ -35,25 +24,26 @@ char Lexer::March() {
 }
 
 char Lexer::GetCurrChar() { return start[HeadIndx]; }
-void Lexer::GenMarch(bool (*func)(char), TOK_TYPES tok,
+void Lexer::GenMarch(bool (*func)(char), TokenKind tok,
                      bool shouldSaveLiteral) {
   char curChar = GetCurrChar();
   while (func(curChar) && !bCompletedLex) {
     ChunkBuffer.push_back(curChar);
     curChar = March();
   }
-  if (shouldSaveLiteral) {
-    TokenBuffer.push_back(
-        Token(tok, string(ChunkBuffer.begin(), ChunkBuffer.end())));
-  } else {
-
-    TokenBuffer.push_back(Token(tok));
-  }
-  ChunkBuffer.clear();
 }
 void Lexer::MarchWord() {
   auto func = [](char c) -> bool { return isalnum(c); };
   GenMarch(func, TOK_TYPES::WORD, true);
+  // TODO: We have to determine if this word is a keyword or an identifier
+  if (/*Use lookup to determine if this is a keyword*/) {
+
+  } else {
+    // identifier
+    TokenBuffer.push_back(Token(
+        TokenKind::identifier, string(ChunkBuffer.begin(), ChunkBuffer.end())));
+  }
+  ChunkBuffer.clear();
 }
 
 void Lexer::MarchNum() {
@@ -98,7 +88,10 @@ void Lexer::Lex(char *start, char *end) {
       MarchNum();
     } else if (isblank(curChar)) {
       MarchBlank();
-    } else if (issymbol(curChar)) {
+    } else if (issymbol(curChar)) { // TODO: Make sure symbol doesnt include ""
+                                    // and //, this is reserved for strings and
+                                    // comments respectively
+      // Perhaps we could handle this inside of the MarchSymbols func
       MarchSymbols();
     }
   }

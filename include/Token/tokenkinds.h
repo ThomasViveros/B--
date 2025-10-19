@@ -11,7 +11,6 @@
 ///
 //===----------------------------------------------------------------------===//
 #pragma once
-#include <cassert>
 
 namespace Brain {
 
@@ -23,18 +22,6 @@ enum TokenKind : unsigned short {
 #include "Token/tokenkinds.def"
   NUM_TOKENS
 };
-
-/// Provides a namespace for notable identifers such as float_t and
-/// double_t.
-enum NotableIdentifierKind {
-#define NOTABLE_IDENTIFIER(X) X,
-#include "Token/tokenkinds.def"
-  NUM_NOTABLE_IDENTIFIERS
-};
-
-// TODO: Remove
-/// Defines the possible values of an on-off-switch (C99 6.10.6p2).
-enum OnOffSwitch { OOS_ON, OOS_OFF, OOS_DEFAULT };
 
 /// Determines the name of a token as used within the front end.
 ///
@@ -49,14 +36,11 @@ const char *getTokenName(TokenKind Kind);
 /// and will not produce any alternative spellings (e.g., a
 /// digraph). For the actual spelling of a given Token, use
 /// Preprocessor::getSpelling().
-const char *getPunctuatorSpelling(TokenKind Kind) ;
+const char *getPunctuatorSpelling(TokenKind Kind);
 
 /// Determines the spelling of simple keyword and contextual keyword
 /// tokens like 'int' and 'dynamic_cast'. Returns NULL for other token kinds.
-const char *getKeywordSpelling(TokenKind Kind) ;
-
-/// Returns the spelling of preprocessor keywords, such as "else".
-const char *getPPKeywordSpelling(PPKeywordKind Kind) ;
+const char *getKeywordSpelling(TokenKind Kind);
 
 /// Return true if this is a raw identifier or an identifier kind.
 inline bool isAnyIdentifier(TokenKind K) {
@@ -77,16 +61,6 @@ inline bool isLiteral(TokenKind K) {
   const bool isInLiteralRange =
       K >= tok::numeric_constant && K <= tok::utf32_string_literal;
 
-#if !NDEBUG
-  const bool isLiteralExplicit =
-      K == tok::numeric_constant || K == tok::char_constant ||
-      K == tok::wide_char_constant || K == tok::utf8_char_constant ||
-      K == tok::utf16_char_constant || K == tok::utf32_char_constant ||
-      isStringLiteral(K) || K == tok::header_name || K == tok::binary_data;
-  assert(isInLiteralRange == isLiteralExplicit &&
-         "TokenKind literals should be contiguous");
-#endif
-
   return isInLiteralRange;
 }
 
@@ -95,14 +69,6 @@ bool isAnnotation(TokenKind K);
 
 /// Return true if this is an annotation token representing a pragma.
 bool isPragmaAnnotation(TokenKind K);
-
-/*
-inline constexpr bool isRegularKeywordAttribute(TokenKind K) {
-  return (false
-#define KEYWORD_ATTRIBUTE(X, ...) || (K == tok::kw_##X)
-#include "clang/Basic/RegularKeywordAttrInfo.inc"
-  );
-}*/
 
 } // end namespace tok
 } // end namespace Brain
