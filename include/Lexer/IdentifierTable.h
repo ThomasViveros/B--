@@ -1,25 +1,23 @@
 #pragma once
-#include <string_view>
 #include "Token/tokenkinds.h"
+#include <string_view>
 
 namespace Brain {
-
 
 class IdentifierTable {
 
 public:
-    static IdentifierTable& GetIdentifierTable() {
-        static IdentifierTable instance;
-        return instance;
-    }
+  static IdentifierTable &GetIdentifierTable() {
+    static IdentifierTable instance;
+    return instance;
+  }
 
-    bool IsKeyword(std::string_view word, tok::TokenKind& tokenKind);
+  bool IsKeyword(std::string_view word, tok::TokenKind &tokenKind);
 
 protected:
-    void AddKeywords();
+  void AddKeywords();
 
 private:
 };
 
-
-}// end namespace Brain
+} // end namespace Brain

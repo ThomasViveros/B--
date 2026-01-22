@@ -4,18 +4,32 @@
 #include "Token/token.h"
 #include "Token/tokenkinds.h"
 #include <cstdint>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 namespace Brain {
 
 struct TrieNode {
+
+  TrieNode *GetChild(char c) {
+    children.contains(c);
+    auto it = children.find(c);
+    if (it != children.end()) {
+      return it->second;
+    }
+    return nullptr;
+  }
+
   std::unordered_map<char, TrieNode *> children;
   int count = 0; // how many combos pass through this node
+  // Is this node an identifier (path included)
+  bool bIsIdentifier = false;
 };
 
 class Trie {
 public:
   Trie() : root(new TrieNode) {}
+  TrieNode *GetRoot() { return root; }
 
   void insert(const std::string &word) {
     TrieNode *node = root;
@@ -46,7 +60,6 @@ private:
 
 class Lexer {
 
-  // Alias for Vector of characters
   using int32 = int32_t;
 
 public:
@@ -60,6 +73,7 @@ protected:
   char GetCurrChar();
   // Gets the next character in the file
   char March();
+  void MarchBack(int32 amount = 1);
   void GenMarch(bool (*func)(char));
   void MarchWord();
   void MarchNum();
@@ -67,6 +81,12 @@ protected:
   void MarchBlank();
   void MarchCommentLine();
   void MarchCommentBlock();
+  void MarchString();
+
+  // Create a token and add it to the token buffer. This will clear the
+  // ChunkBuffer(regardless if we save literal)
+  void CreateToken(tok::TokenKind tokKind, bool bSaveLiteral);
+  std::string_view ChunkBufferToStringView();
 
   // Where the lexer should start and end lexing (inclusive).
   char *start = nullptr;

@@ -1,7 +1,7 @@
 #include "Lexer/lexer.h"
+#include "Lexer/IdentifierTable.h"
 #include "Token/token.h"
 #include "Token/tokenkinds.h"
-#include "Lexer/IdentifierTable.h"
 #include <cctype>
 #include <iostream>
 #include <string>
@@ -13,6 +13,15 @@ using namespace tok;
 
 bool Lexer::issymbol(char c) { return !(isalnum(c) || isspace(c)); }
 
+void Lexer::CreateToken(tok::TokenKind tokKind, bool bSaveLiteral) {
+  if (bSaveLiteral) {
+    TokenBuffer.push_back(
+        Token(tokKind, string(ChunkBuffer.begin(), ChunkBuffer.end())));
+  } else {
+    TokenBuffer.push_back(Token(tokKind));
+  }
+  ChunkBuffer.clear();
+}
 char Lexer::March() {
   if (start + ++HeadIndx <= end) {
     return start[HeadIndx];
@@ -21,6 +30,14 @@ char Lexer::March() {
   return NULL;
 }
 
+void Lexer::MarchBack(int32 amount) {
+  ChunkBuffer.erase(ChunkBuffer.end() - amount, ChunkBuffer.end());
+  HeadIndx -= amount;
+  // bCompletedLex = false;???
+}
+std::string_view Lexer::ChunkBufferToStringView() {
+  return std::string_view(ChunkBuffer.data(), ChunkBuffer.size());
+}
 char Lexer::GetCurrChar() { return start[HeadIndx]; }
 
 void Lexer::GenMarch(bool (*func)(char)) {
@@ -36,25 +53,25 @@ void Lexer::MarchWord() {
   GenMarch(func);
 
   TokenKind keywordToken = unknown;
-  if (IdentifierTable::GetIdentifierTable().IsKeyword(std::string_view(ChunkBuffer.data(),ChunkBuffer.size()),keywordToken)) {
-    TokenBuffer.push_back(Token(keywordToken));
+  if (IdentifierTable::GetIdentifierTable().IsKeyword(ChunkBufferToStringView(),
+                                                      keywordToken)) {
+    CreateToken(keywordToken, false);
   } else {
     // identifier
-    TokenBuffer.push_back(Token(
-        TokenKind::identifier, string(ChunkBuffer.begin(), ChunkBuffer.end())));
+    CreateToken(tok::identifier, true);
   }
-  ChunkBuffer.clear();
 }
 
 void Lexer::MarchNum() {
-  //Number may be int or float, accept a single period and determine actual literal type during
-  //semantic analysis.
+  // Number may be int or float, accept a single period and determine actual
+  // literal type during semantic analysis.
 
   char curChar = GetCurrChar();
   bool bHasPeriodBeenFound = false;
   bool bIsPeriod = false;
 
-  while (isdigit(curChar) || (bIsPeriod && !bHasPeriodBeenFound) && !bCompletedLex) {
+  while (isdigit(curChar) ||
+         (bIsPeriod && !bHasPeriodBeenFound) && !bCompletedLex) {
     bIsPeriod = curChar == '.';
 
     ChunkBuffer.push_back(curChar);
@@ -65,26 +82,81 @@ void Lexer::MarchNum() {
     }
   }
 
-  TokenBuffer.push_back(Token(TokenKind::numeric_constant, string(ChunkBuffer.begin(), ChunkBuffer.end())));
-
-  ChunkBuffer.clear();
+  CreateToken(tok::TokenKind::numeric_constant, true);
 }
 
 void Lexer::MarchSymbols() {
 
   char curChar = GetCurrChar();
+
+  TrieNode *curNode = TrieTree.GetRoot();
+  int32 iterSinceLastSeenKeyword = 0;
+
+  auto lambda = []() {
+    tok::TokenKind tokenKind;
+
+    if (IdentifierTable::GetIdentifierTable().IsKeyword(
+            ChunkBufferToStringView(), /*OUT*/ tokenKind)) {
+
+      // If this is a comment, dont waste time trying to tokenize, just
+      // determine the end of the comment and discard.
+      if (tokenKind == tok::TokenKind::comment) {
+        // We detected a comment, discard these symbols and start marching the
+        // comment line
+        ChunkBuffer.clear();
+        MarchCommentLine();
+        return;
+      } else {
+        CreateToken(tokenKind, false);
+        break;
+      }
+    }
+  };
   while (issymbol(curChar)) {
     ChunkBuffer.push_back(curChar);
-    int count = TrieTree.prefixCount(ChunkBuffer.begin(), ChunkBuffer.end());
+
+    curNode = curNode->GetChild(curChar);
+    if (!curNode->bIsIdentifier) {
+      iterSinceLastSeenKeyword++;
+    }
+
+    //  TODO: we need to do this incrementally, currently were doing
+    //  inefficiently.
+    // this means that there is no more possible identifiers this could become,
+    // make sure this is a token, else we have to backtrack.
+    if (curNode->children.size() < 1) {
+      if (curNode->bIsIdentifier) {
+        // Make the token, do comment check etc
+      } else {
+        // backtrack
+        MarchBack(iterSinceLastSeenKeyword);
+        // Make the token
+      }
+    }
     if (count == 1) {
-      TokenBuffer.push_back(
-          Token::DetOpTok(string_view(ChunkBuffer.data(), ChunkBuffer.size())));
-      break;
-    } else if (count == 0) {
-      // Invalid syntax, TODO: DEBUGGER
+
+      tok::TokenKind tokenKind;
+
+      if (IdentifierTable::GetIdentifierTable().IsKeyword(
+              ChunkBufferToStringView(), /*OUT*/ tokenKind)) {
+
+        // If this is a comment, dont waste time trying to tokenize, just
+        // determine the end of the comment and discard.
+        if (tokenKind == tok::TokenKind::comment) {
+          // We detected a comment, discard these symbols and start marching the
+          // comment line
+          ChunkBuffer.clear();
+          MarchCommentLine();
+          return;
+        } else {
+          CreateToken(tokenKind, false);
+          break;
+        }
+      }
     }
     curChar = March();
   }
+
   ChunkBuffer.clear();
 }
 void Lexer::MarchBlank() {
@@ -93,7 +165,18 @@ void Lexer::MarchBlank() {
     curChar = March();
   }
 }
-void Lexer::MarchCommentLine() {}
+void Lexer::MarchCommentLine() {
+  auto func = [](char c) -> bool { return c == '\n'; };
+  GenMarch(func);
+
+  CreateToken(tok::comment, false);
+}
+
+void Lexer::MarchString() {
+  auto func = [](char c) -> bool { return c == '"'; };
+  GenMarch(func);
+  CreateToken(tok::string_literal, true);
+}
 
 void Lexer::Lex(char *start, char *end) {
   // Reset state
