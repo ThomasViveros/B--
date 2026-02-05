@@ -3,23 +3,35 @@
 
 #include "Token/token.h"
 #include "Token/tokenkinds.h"
+#include "IdentifierTable.h"
 #include <cstdint>
+#include <iostream>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
+
+#include "Core/CoreTypes.h"
+
 namespace Brain {
 
 struct TrieNode {
 
-  TrieNode *GetChild(char c) {
-    children.contains(c);
-    auto it = children.find(c);
-    if (it != children.end()) {
+  TrieNode *GetChild(const char c) {
+    if (const auto it = children.find(c); it != children.end()) {
       return it->second;
     }
     return nullptr;
   }
 
+  TrieNode* GetParent(int32_t generations = 1) {
+    TrieNode* parent = this;
+    for (int i = 0; i < generations; ++i) {
+      parent = parent->parent;
+    }
+    return parent;
+  }
+
+  TrieNode* parent = nullptr;
   std::unordered_map<char, TrieNode *> children;
   int count = 0; // how many combos pass through this node
   // Is this node an identifier (path included)
@@ -28,34 +40,36 @@ struct TrieNode {
 
 class Trie {
 public:
-  Trie() : root(new TrieNode) {}
-  TrieNode *GetRoot() { return root; }
+  Trie(){}
+  TrieNode *GetRoot() { return &root; }
 
   void insert(const std::string &word) {
-    TrieNode *node = root;
+    TrieNode* node = &root;
     for (char c : word) {
       if (!node->children[c]) {
         node->children[c] = new TrieNode();
       }
       node = node->children[c];
+      node->parent = node;
       node->count++; // increment count for each prefix
     }
+    node->bIsIdentifier = true;
   }
 
   // Generic version: works with any iterable of chars
   template <typename Iter> int prefixCount(Iter begin, Iter end) const {
-    TrieNode *node = root;
+    TrieNode node = root;
     for (Iter it = begin; it != end; ++it) {
       char c = *it;
-      if (!node->children.count(c))
+      if (!node.children.contains(c))
         return 0;
-      node = node->children.at(c);
+      node = *node.children.at(c);
     }
-    return node->count;
+    return node.count;
   }
 
 private:
-  TrieNode *root;
+  TrieNode root;
 };
 
 class Lexer {
@@ -63,24 +77,25 @@ class Lexer {
   using int32 = int32_t;
 
 public:
-  Lexer() {}
+  Lexer();
+
+  std::vector<Token> Lex(const char *start, const char *end);
 
 protected:
-  void Lex(char *start, char *end);
+
 
   bool issymbol(char c);
 
-  char GetCurrChar();
+  char GetCurrChar() const;
   // Gets the next character in the file
-  char March();
-  void MarchBack(int32 amount = 1);
-  void GenMarch(bool (*func)(char));
+  bool March(char& c, bool saveToChunkBuffer = true);
+  void GenMarch(bool (*func)(char), bool saveToChunkBuffer = true);
   void MarchWord();
   void MarchNum();
   void MarchSymbols();
   void MarchBlank();
   void MarchCommentLine();
-  void MarchCommentBlock();
+  void MarchCommentBlock(){};
   void MarchString();
 
   // Create a token and add it to the token buffer. This will clear the
@@ -89,17 +104,29 @@ protected:
   std::string_view ChunkBufferToStringView();
 
   // Where the lexer should start and end lexing (inclusive).
-  char *start = nullptr;
-  char *end = nullptr;
+  const char* Start = nullptr;
+  const char* End = nullptr;
   // Used while marching a chunk.
   std::vector<char> ChunkBuffer;
 
   std::vector<Token> TokenBuffer;
   int32 HeadIndx = 0;
 
+  void NewLine() {
+    CurrentLine++;
+    CurrentColumn = 0;
+  };
+  int32 CurrentLine = 0;
+  //AKA the index of the char on the line
+  int32 CurrentColumn = 0;
+
 private:
   bool bCompletedLex = false;
-  static Trie TrieTree;
+
+  Trie TrieTree;
+
+  //The identifier table this lexer owns
+  IdentifierTable IdentifierTable;
 };
 
 } // namespace Brain

@@ -4,8 +4,6 @@
 #Build (multi-config requires --config)
 #cmake --build build --config Release
 
-
-
 cmake_minimum_required(VERSION 3.10)
 project(Brain VERSION 1.0 LANGUAGES CXX)
 
@@ -17,7 +15,6 @@ include_directories(include)
 
 
 # All .cpp files in the src folder
-file(GLOB SOURCES src/*.cpp)
+file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
 
 add_executable(Brain ${SOURCES})
-

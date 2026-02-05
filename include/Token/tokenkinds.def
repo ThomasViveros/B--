@@ -132,6 +132,7 @@ PUNCTUATOR(tilde,               "~")
 PUNCTUATOR(exclaim,             "!")
 PUNCTUATOR(exclaimequal,        "!=")
 PUNCTUATOR(slash,               "/")
+PUNCTUATOR(slashslash,          "//")
 PUNCTUATOR(slashequal,          "/=")
 PUNCTUATOR(percent,             "%")
 PUNCTUATOR(percentequal,        "%=")
@@ -171,6 +172,8 @@ PUNCTUATOR(at,                  "@")
 PUNCTUATOR(lesslessless,          "<<<")
 PUNCTUATOR(greatergreatergreater, ">>>")
 
+//DEBUG
+PUNCTUATOR(nya,                  "``@")
 // C99 6.4.1: Keywords.  These turn into kw_* tokens.
 // Flags allowed:
 //   KEYALL   - This is a keyword in all variants of C and C++, or it
