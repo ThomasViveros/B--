@@ -1,11 +1,12 @@
 #ifndef BRAIN_LEXER_H
 #define BRAIN_LEXER_H
 
+#include "IdentifierTable.h"
 #include "Token/token.h"
 #include "Token/tokenkinds.h"
-#include "IdentifierTable.h"
 #include <cstdint>
 #include <iostream>
+#include <string>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
@@ -23,15 +24,15 @@ struct TrieNode {
     return nullptr;
   }
 
-  TrieNode* GetParent(int32_t generations = 1) {
-    TrieNode* parent = this;
+  TrieNode *GetParent(int32_t generations = 1) {
+    TrieNode *parent = this;
     for (int i = 0; i < generations; ++i) {
       parent = parent->parent;
     }
     return parent;
   }
 
-  TrieNode* parent = nullptr;
+  TrieNode *parent = nullptr;
   std::unordered_map<char, TrieNode *> children;
   int count = 0; // how many combos pass through this node
   // Is this node an identifier (path included)
@@ -40,11 +41,11 @@ struct TrieNode {
 
 class Trie {
 public:
-  Trie(){}
+  Trie() {}
   TrieNode *GetRoot() { return &root; }
 
   void insert(const std::string &word) {
-    TrieNode* node = &root;
+    TrieNode *node = &root;
     for (char c : word) {
       if (!node->children[c]) {
         node->children[c] = new TrieNode();
@@ -79,16 +80,16 @@ class Lexer {
 public:
   Lexer();
 
-  std::vector<Token> Lex(const char *start, const char *end);
+  std::vector<Token> Lex(const char *start, const char *end,
+                         const std::string &targetFileName,
+                         const std::string &targetFilePath);
 
 protected:
-
-
   bool issymbol(char c);
 
   char GetCurrChar() const;
   // Gets the next character in the file
-  bool March(char& c, bool saveToChunkBuffer = true);
+  bool March(char &c, bool saveToChunkBuffer = true);
   void GenMarch(bool (*func)(char), bool saveToChunkBuffer = true);
   void MarchWord();
   void MarchNum();
@@ -104,8 +105,8 @@ protected:
   std::string_view ChunkBufferToStringView();
 
   // Where the lexer should start and end lexing (inclusive).
-  const char* Start = nullptr;
-  const char* End = nullptr;
+  const char *Start = nullptr;
+  const char *End = nullptr;
   // Used while marching a chunk.
   std::vector<char> ChunkBuffer;
 
@@ -117,15 +118,18 @@ protected:
     CurrentColumn = 0;
   };
   int32 CurrentLine = 0;
-  //AKA the index of the char on the line
+  // AKA the index of the char on the line
   int32 CurrentColumn = 0;
+
+  std::string TargetFileName;
+  std::string TargetFilePath;
 
 private:
   bool bCompletedLex = false;
 
   Trie TrieTree;
 
-  //The identifier table this lexer owns
+  // The identifier table this lexer owns
   IdentifierTable IdentifierTable;
 };
 
