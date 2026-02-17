@@ -8,19 +8,52 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
-
+#include <fstream>
+#include <sstream>
 using namespace std;
 using namespace Brain;
 using namespace tok;
 
 Lexer::Lexer() {
-  // Populate the trie tree.
-#define PUNCTUATOR(NAME, VALUE) TrieTree.insert(VALUE);
-#include "Token/tokenkinds.def"
-#undef PUNCTUATOR
+  PopulateSymbolTree();
 }
 
-bool Lexer::issymbol(char c) { return !(isalnum(c) || isspace(c)); }
+Lexer::Lexer(const std::vector<std::string>& files) {
+  PopulateSymbolTree();
+
+  const int lexChunkSize = 4;
+  char buffer[lexChunkSize];
+
+  for (auto& file : files) {
+    std::ifstream ofile(file, std::ios::binary);
+
+    if (!ofile.is_open()) {
+      BrainFreeze::ErrorContext context(__FILE__, "", __LINE__, 0);
+      BrainFreeze::RuntimeError newError("Unable to open file: " + file, context);
+      ErrorBuffer.push_back(newError);
+      continue;
+    }
+
+
+    //Lex in chunks. This is so we can handle arbitrary sized files
+    while (ofile.read(buffer, sizeof(buffer)) || ofile.gcount() > 0) {
+      Lex(&buffer[0], &buffer[ofile.gcount()-1], file,"TODO");
+    }
+
+    // for (auto& token : summary.Tokens) {
+    //   cout<< token.DEBUG_TOKEN()<<endl;
+    // }
+    // for (auto& error : summary.Errors) {
+    //   cout <<error<<endl;
+    // }
+  }
+}
+
+bool Lexer::issymbol(char c) {
+  return (33 <= c && c <= 47) ||
+         (58 <= c && c <= 64) ||
+         (91 <= c && c <= 96) ||
+         (123 <= c && c <= 126); }
 
 void Lexer::CreateToken(tok::TokenKind tokKind, bool bSaveLiteral) {
   if (bSaveLiteral) {
@@ -31,38 +64,51 @@ void Lexer::CreateToken(tok::TokenKind tokKind, bool bSaveLiteral) {
   }
   ChunkBuffer.clear();
 }
-bool Lexer::March(char &c, bool saveToChunkBuffer) {
+MarchResult Lexer::March(char &c, bool saveToChunkBuffer) {
   // Save current char to buffer
   if (saveToChunkBuffer) {
-    ChunkBuffer.push_back(Start[HeadIndx]);
+    ChunkBuffer.push_back(*Head);
   }
 
-  if (Start + ++HeadIndx < End) {
-    c = Start[HeadIndx];
-    CurrentColumn++;
-    return false;
+  CurrentColumn++;
+  if (++Head < End) {
+    c = *Head;
+    return MarchResult::cont;
   }
-  bCompletedLex = true;
-  return true;
+
+  return bLastLexChunk ? MarchResult::eof :  MarchResult::eoc;
 }
 
 std::string_view Lexer::ChunkBufferToStringView() {
   return {ChunkBuffer.data(), ChunkBuffer.size()};
 }
-char Lexer::GetCurrChar() const { return Start[HeadIndx]; }
 
-void Lexer::GenMarch(bool (*func)(char), bool saveToChunkBuffer) {
+void Lexer::PopulateSymbolTree() {
+  // Populate the symbol trie tree.
+#define PUNCTUATOR(NAME, VALUE) TrieTree.insert(VALUE);
+#include "Token/tokenkinds.def"
+#undef PUNCTUATOR
+}
+
+char Lexer::GetCurrChar() const { return *Head; }
+
+MarchResult Lexer::GenMarch(bool (*func)(char), bool saveToChunkBuffer) {
   char curChar = GetCurrChar();
+  MarchResult marchResult;
   while (func(curChar)) {
-    if (March(curChar, saveToChunkBuffer)) {
-      break;
+    if (marchResult = March(curChar, saveToChunkBuffer); marchResult > MarchResult::cont) {
+      return marchResult;
     }
   }
+  return MarchResult::stop;
 }
 void Lexer::MarchWord() {
   auto func = [](char c) -> bool { return isalnum(c); };
 
-  GenMarch(func);
+  if (GenMarch(func) == MarchResult::eoc) {
+    //TODO: set the last known type?
+    return;
+  }
 
   TokenKind keywordToken = unknown;
   if (IdentifierTable.IsIdentifier(ChunkBufferToStringView(),
@@ -88,18 +134,23 @@ void Lexer::MarchNum() {
       bHasPeriodBeenFound = true;
     }
 
-    if (March(curChar)) {
-      break;
+    switch (March(curChar)) {
+      case MarchResult::eoc:
+        return;
+      case MarchResult::eof:
+        CreateToken(tok::TokenKind::numeric_constant, true);
+        return;
+      default:
+        break;
     }
   }
-
-  CreateToken(tok::TokenKind::numeric_constant, true);
 }
 
-void Lexer::MarchSymbols() {
+void Lexer::MarchSymbols(int32& lexChunkBackTrackAmount) {
   /*Marching symbols is a bit more complicated that others because some symbols
    *can be a combo of punctuators. For e.g = is a token but so is == . So we
-   *have to take that into account
+   *have to take that into account. We do so with backtracking, which no other march function
+   *does.
    *
    *Also, the other march functions will try to completely resolve their string,
    *but in this func it is possible to leave even if there are symbols left.
@@ -133,10 +184,13 @@ void Lexer::MarchSymbols() {
       }
     } else {
       // Throw error, we have a combination of symbols that dont make a keyword
-      ErrorBuffer.emplace_back(
-          "Symbols dont make up an identifier",
-          BrainFreeze::ErrorContext(TargetFileName, TargetFilePath, CurrentLine,
+      BrainFreeze::SyntaxError newError("Symbols dont make up an identifier: " + std::string(ChunkBuffer.begin(), ChunkBuffer.end()),
+          BrainFreeze::ErrorContext(TargetFileName, TargetFilePath, CurrentLine + 1,
                                     CurrentColumn - ChunkBuffer.size()));
+
+      ErrorBuffer.push_back(newError);
+
+      ChunkBuffer.clear();
     }
   };
 
@@ -166,29 +220,37 @@ void Lexer::MarchSymbols() {
       // Try to backtrack
       // First check if an identifier was ever detected
       if (iterSinceLastSeenKeyword != numOfMarches) {
-        HeadIndx -= iterSinceLastSeenKeyword + 1;
+        Head -= iterSinceLastSeenKeyword + 1;
         CurrentColumn -= iterSinceLastSeenKeyword + 1;
         ChunkBuffer.erase(ChunkBuffer.end() - iterSinceLastSeenKeyword,
                           ChunkBuffer.end());
-        bCompletedLex = false;
         makeSymbolToken();
       } else {
         // We never had a valid identifier, clear buffer and exit
-        ErrorBuffer.emplace_back(
-            "Invalid symbol", BrainFreeze::ErrorContext(
-                                  TargetFileName, TargetFilePath, CurrentLine,
-                                  CurrentColumn - ChunkBuffer.size()));
+        BrainFreeze::SyntaxError newError("Invalid symbol: " + std::string(ChunkBuffer.begin(), ChunkBuffer.end()),
+          BrainFreeze::ErrorContext(TargetFileName, TargetFilePath, CurrentLine + 1,
+                                    CurrentColumn - ChunkBuffer.size()));
+
+        ErrorBuffer.push_back(newError);
 
         ChunkBuffer.clear();
       }
       return;
     }
 
-    if (March(curChar)) {
-      makeSymbolToken();
-      return;
-    }
     numOfMarches++;
+
+    switch (March(curChar)) {
+      case MarchResult::stop:
+      case MarchResult::eof:
+        makeSymbolToken();
+        return;
+      case MarchResult::eoc:
+        lexChunkBackTrackAmount = numOfMarches;
+        return;
+      default:
+        break;
+    }
   }
 
   ChunkBuffer.clear();
@@ -202,14 +264,16 @@ void Lexer::MarchBlank() {
     if (curChar == '\n') {
       NewLine();
     }
-    if (March(curChar, false)) {
+    if (March(curChar, false) > MarchResult::cont) {
       break;
     }
   }
 }
 void Lexer::MarchCommentLine() {
   auto func = [](char c) -> bool { return c != '\n'; };
-  GenMarch(func);
+  if (GenMarch(func) == MarchResult::eoc) {
+    return;
+  }
   NewLine();
   // WARNING: If we ever change this to where we don't call create token, be
   // sure to clear the chunk buffer
@@ -218,26 +282,26 @@ void Lexer::MarchCommentLine() {
 
 void Lexer::MarchString() {
   auto func = [](char c) -> bool { return c == '"'; };
-  GenMarch(func);
+  if (GenMarch(func) == MarchResult::eoc) {
+    return;
+  }
   CreateToken(tok::string_literal, true);
 }
 
-std::vector<Token> Lexer::Lex(const char *start, const char *end,
+int32 Lexer::Lex(const char *start, const char *end,
                               const std::string &targetFileName,
-                              const std::string &targetFilePath) {
+                              const std::string &targetFilePath,
+                              bool bIsLastLexChunk) {
 
-  // Reset state
+  // Re/set state
   Start = start;
   End = end;
 
-  if (start >= end) {
-    return {};
-  }
-
   TargetFileName = targetFileName;
   TargetFilePath = targetFilePath;
+  bLastLexChunk = bIsLastLexChunk;
 
-  while (bCompletedLex != true) {
+  while (!IsLexComplete()) {
     char curChar = GetCurrChar();
     if (isalpha(curChar)) {
       MarchWord();
@@ -246,10 +310,15 @@ std::vector<Token> Lexer::Lex(const char *start, const char *end,
     } else if (isblank(curChar) || curChar == '\n') {
       MarchBlank();
     } else if (issymbol(curChar)) {
-      MarchSymbols();
+      int32 backtrackLexChunkAmount = 0;
+      MarchSymbols(backtrackLexChunkAmount);
+      if (backtrackLexChunkAmount != 0) {
+        return backtrackLexChunkAmount;
+      }
     } else {
       throw std::logic_error("Unhandled lex case");
     }
   }
-  return TokenBuffer;
+
+  return 0;
 }

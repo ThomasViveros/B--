@@ -5,13 +5,11 @@
 #include "Token/token.h"
 #include "Token/tokenkinds.h"
 #include <cstdint>
-#include <iostream>
 #include <string>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
-
-#include "Core/CoreTypes.h"
+#include "Error/BrainFreeze/ErrorTypes.h"
 
 namespace Brain {
 
@@ -41,7 +39,7 @@ struct TrieNode {
 
 class Trie {
 public:
-  Trie() {}
+  Trie() = default;
   TrieNode *GetRoot() { return &root; }
 
   void insert(const std::string &word) {
@@ -73,27 +71,50 @@ private:
   TrieNode root;
 };
 
+  struct LexSummary {
+    LexSummary()=default;
+    LexSummary(const std::vector<Token>& tokens, const std::vector<BrainFreeze::Error>& errors)
+      : Tokens(tokens), Errors(errors) {}
+    std::vector<Token> Tokens;
+    std::vector<BrainFreeze::Error> Errors;
+  };
+
+
+  enum class MarchResult : uint8_t {
+    cont, //Continue to march
+    stop, //Stop marching due to reaching the end of MarchChunk
+    eoc,  //Stop marching due to reaching end of LexChunk
+    eof   //Stop marching due to reaching end of file
+  };
+
 class Lexer {
 
   using int32 = int32_t;
 
 public:
   Lexer();
+  Lexer(const std::vector<std::string>& files);
 
-  std::vector<Token> Lex(const char *start, const char *end,
+  int32 Lex(const char *start, const char *end,
                          const std::string &targetFileName,
-                         const std::string &targetFilePath);
+                         const std::string &targetFilePath,
+                         bool bIsLastLexChunk = false);
 
 protected:
   bool issymbol(char c);
 
   char GetCurrChar() const;
   // Gets the next character in the file
-  bool March(char &c, bool saveToChunkBuffer = true);
-  void GenMarch(bool (*func)(char), bool saveToChunkBuffer = true);
+  MarchResult March(char &c, bool saveToChunkBuffer = true);
+  MarchResult GenMarch(bool (*func)(char), bool saveToChunkBuffer = true);
   void MarchWord();
   void MarchNum();
-  void MarchSymbols();
+
+  //If we hit the end of a lex chunk(that isn't EOF) while lexing symbols, we have to
+  //backtrack the lex chunk so that the next lex chunk starts at the beginning of the
+  //symbols. This is because we may need to backtrack during the symbol lexing, but
+  //we won't be able to through lex chunks.
+  void MarchSymbols(int32& lexChunkBackTrackAmount);
   void MarchBlank();
   void MarchCommentLine();
   void MarchCommentBlock(){};
@@ -111,7 +132,11 @@ protected:
   std::vector<char> ChunkBuffer;
 
   std::vector<Token> TokenBuffer;
-  int32 HeadIndx = 0;
+  //The current char we are on
+  char* Head = nullptr;
+  //WARNING: This will cause slicing, as of right now it is compatible with our error types
+  //but if we ever want specialized information on any error type we will have to refactor this
+  std::vector<BrainFreeze::Error> ErrorBuffer;
 
   void NewLine() {
     CurrentLine++;
@@ -125,7 +150,12 @@ protected:
   std::string TargetFilePath;
 
 private:
-  bool bCompletedLex = false;
+
+
+  void PopulateSymbolTree();
+  //Returns true if The head is greater or equal to the end
+  bool IsLexComplete() const {return Head >= End;}
+  bool bLastLexChunk = false;
 
   Trie TrieTree;
 

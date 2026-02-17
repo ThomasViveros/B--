@@ -28,10 +28,8 @@ void IdentifierTable::AddKeywords() {
 
 #define KEYWORD(NAME, FLAGS) AddKeyword(std::string_view(#NAME), tok::kw_ ## NAME, *this);
 #include "Token/tokenkinds.def"
-/*
-    for (auto& identifiers : Identifiers) {
-        std::cout<< identifiers.first<<std::endl;
-    }*/
+#undef KEYWORD
+
 #define PUNCTUATOR(NAME, VALUE) AddKeyword(std::string_view(VALUE), tok::NAME, *this);
 #include "Token/tokenkinds.def"
 #undef PUNCTUATOR

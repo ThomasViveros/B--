@@ -1,7 +1,6 @@
 #pragma once
 
 #include "tokenkinds.h"
-#include <cstdint>
 #include <format>
 #include <string>
 #include <string_view>
