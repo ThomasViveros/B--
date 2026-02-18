@@ -1,15 +1,16 @@
 #ifndef BRAIN_LEXER_H
 #define BRAIN_LEXER_H
 
+#include "Error/BrainFreeze/ErrorTypes.h"
 #include "IdentifierTable.h"
 #include "Token/token.h"
 #include "Token/tokenkinds.h"
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
-#include "Error/BrainFreeze/ErrorTypes.h"
 
 namespace Brain {
 
@@ -71,21 +72,45 @@ private:
   TrieNode root;
 };
 
-  struct LexSummary {
-    LexSummary()=default;
-    LexSummary(const std::vector<Token>& tokens, const std::vector<BrainFreeze::Error>& errors)
+struct LexSummary {
+  LexSummary() = default;
+  LexSummary(const std::vector<Token> &tokens,
+             const std::vector<BrainFreeze::Error> &errors)
       : Tokens(tokens), Errors(errors) {}
-    std::vector<Token> Tokens;
-    std::vector<BrainFreeze::Error> Errors;
-  };
+  std::vector<Token> Tokens;
+  std::vector<BrainFreeze::Error> Errors;
+};
 
+enum class MarchResult : uint8_t {
+  cont, // Continue to march
+  stop, // Stop marching due to reaching the end of MarchChunk
+  eoc,  // Stop marching due to reaching end of LexChunk
+  eof   // Stop marching due to reaching end of file
+};
 
-  enum class MarchResult : uint8_t {
-    cont, //Continue to march
-    stop, //Stop marching due to reaching the end of MarchChunk
-    eoc,  //Stop marching due to reaching end of LexChunk
-    eof   //Stop marching due to reaching end of file
-  };
+enum class MarchState : uint8_t {
+  Default,
+  Word,
+  Symbol,
+  String,
+  Comment,
+  Number
+};
+
+class LexBuffer {
+public:
+  LexBuffer(size_t bufferSize);
+
+  char Advance();
+  char peek(uint32_t offset);
+
+  void Append(std::string_view newChars);
+
+private:
+  void Compact();
+  size_t Pos = 0;
+  char *Buffer;
+};
 
 class Lexer {
 
@@ -93,12 +118,11 @@ class Lexer {
 
 public:
   Lexer();
-  Lexer(const std::vector<std::string>& files);
+  Lexer(const std::vector<std::string> &files);
 
   int32 Lex(const char *start, const char *end,
-                         const std::string &targetFileName,
-                         const std::string &targetFilePath,
-                         bool bIsLastLexChunk = false);
+            const std::string &targetFileName,
+            const std::string &targetFilePath, bool bIsLastLexChunk = false);
 
 protected:
   bool issymbol(char c);
@@ -110,11 +134,11 @@ protected:
   void MarchWord();
   void MarchNum();
 
-  //If we hit the end of a lex chunk(that isn't EOF) while lexing symbols, we have to
-  //backtrack the lex chunk so that the next lex chunk starts at the beginning of the
-  //symbols. This is because we may need to backtrack during the symbol lexing, but
-  //we won't be able to through lex chunks.
-  void MarchSymbols(int32& lexChunkBackTrackAmount);
+  // If we hit the end of a lex chunk(that isn't EOF) while lexing symbols, we
+  // have to backtrack the lex chunk so that the next lex chunk starts at the
+  // beginning of the symbols. This is because we may need to backtrack during
+  // the symbol lexing, but we won't be able to through lex chunks.
+  void MarchSymbols(int32 &lexChunkBackTrackAmount);
   void MarchBlank();
   void MarchCommentLine();
   void MarchCommentBlock(){};
@@ -128,14 +152,16 @@ protected:
   // Where the lexer should start and end lexing (inclusive).
   const char *Start = nullptr;
   const char *End = nullptr;
+
   // Used while marching a chunk.
   std::vector<char> ChunkBuffer;
 
   std::vector<Token> TokenBuffer;
-  //The current char we are on
-  char* Head = nullptr;
-  //WARNING: This will cause slicing, as of right now it is compatible with our error types
-  //but if we ever want specialized information on any error type we will have to refactor this
+  // The current char we are on
+  char *Head = nullptr;
+  // WARNING: This will cause slicing, as of right now it is compatible with our
+  // error types but if we ever want specialized information on any error type
+  // we will have to refactor this
   std::vector<BrainFreeze::Error> ErrorBuffer;
 
   void NewLine() {
@@ -150,11 +176,9 @@ protected:
   std::string TargetFilePath;
 
 private:
-
-
   void PopulateSymbolTree();
-  //Returns true if The head is greater or equal to the end
-  bool IsLexComplete() const {return Head >= End;}
+  // Returns true if The head is greater or equal to the end
+  bool IsLexComplete() const { return Head >= End; }
   bool bLastLexChunk = false;
 
   Trie TrieTree;
