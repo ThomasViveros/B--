@@ -17,9 +17,10 @@ public:
   tok::TokenKind TokenType = tok::TokenKind::unknown;
   // std::vector<char> Literal;
   std::string Literal;
-
+#ifndef NDEBUG
     [[nodiscard]] std::string DEBUG_TOKEN() const {
-        return std::format("Kind:{}, Literal: {} \n",static_cast<unsigned short>(TokenType), Literal);
+        return std::format("Kind:{}, Literal: {} \n", tok::debugTokArr[static_cast<unsigned short>(TokenType)], Literal);
     }
+#endif
 };
 } // namespace Brain

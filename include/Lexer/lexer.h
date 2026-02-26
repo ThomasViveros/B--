@@ -88,28 +88,62 @@ enum class MarchResult : uint8_t {
   eof   // Stop marching due to reaching end of file
 };
 
-enum class MarchState : uint8_t {
+enum class EMarchState : uint8_t {
   Default,
   Word,
   Symbol,
   String,
   Comment,
-  Number
+  Number,
+  Blank
 };
 
 class LexBuffer {
+
 public:
-  LexBuffer(size_t bufferSize);
+  LexBuffer()=delete;
+  explicit LexBuffer(size_t bufferSize);
 
-  char Advance();
-  char peek(uint32_t offset);
+  enum EAdvanceResult : uint8_t{
+    cont, //We can continue
+    eoc,  //We have hit the end of a chunk
+    eof   //We have hit the end of file
+  };
 
-  void Append(std::string_view newChars);
+  bool HasCompleted()const;
 
-private:
+  //Return is in regard to the next char
+  EAdvanceResult GetCurrentChar(char& outChar) const;
+  size_t GetPosition() const {return PeekOffset;}
+  //Increment the pos and get the char at the new pos. Return is in regard to the next char (after advancing)
+  EAdvanceResult Advance(char& outChar);
+  //Increment the pos num times. outChars is all the chars starting from old pos up to and excluding the last pos.
+  //Return is in regard to the new pos
+  EAdvanceResult AdvanceMany(uint32_t num, std::vector<char>& outChars);
+  //Get the char at pos + offset without incrementing pos. Return is in regard to the peeked position
+  EAdvanceResult Peek(uint32_t offset, char& peekedChar) const;
+
+  uint32_t GetRemainingElementSpace() const;
+
+  char* GetWritingPosition() {
+    //std::cout<< "WritingPosition Pos: "<<Pos<<std::endl;
+    //std::cout<< "WritingPosition PeekOffset: "<<PeekOffset<<std::endl;
+
+    return Buffer + Pos + PeekOffset;
+  }
+  size_t GetWritingAmount() {return BufferSize - PeekOffset;}
+  void SetEOF(std::streamsize streamSize);
+
+  //Expected to be called before refilling buffer
   void Compact();
+  size_t PeekOffset = 0;
+private:
+  char* Buffer;
+  size_t BufferSize = 0;
+
   size_t Pos = 0;
-  char *Buffer;
+  //The position AFTER the last readable char
+  std::streamsize EofPos = INDEX_NONE;
 };
 
 class Lexer {
@@ -118,33 +152,22 @@ class Lexer {
 
 public:
   Lexer();
-  Lexer(const std::vector<std::string> &files);
+  Lexer(const std::vector<std::string> &files, size_t lexBufferSize);
 
-  int32 Lex(const char *start, const char *end,
-            const std::string &targetFileName,
-            const std::string &targetFilePath, bool bIsLastLexChunk = false);
+  int32 Lex(const std::string &targetFileName, const std::string &targetFilePath);
 
 protected:
   bool issymbol(char c);
 
-  char GetCurrChar() const;
-  // Gets the next character in the file
-  MarchResult March(char &c, bool saveToChunkBuffer = true);
-  MarchResult GenMarch(bool (*func)(char), bool saveToChunkBuffer = true);
   void MarchWord();
   void MarchNum();
-
-  // If we hit the end of a lex chunk(that isn't EOF) while lexing symbols, we
-  // have to backtrack the lex chunk so that the next lex chunk starts at the
-  // beginning of the symbols. This is because we may need to backtrack during
-  // the symbol lexing, but we won't be able to through lex chunks.
-  void MarchSymbols(int32 &lexChunkBackTrackAmount);
+  void MarchSymbols();
   void MarchBlank();
   void MarchCommentLine();
   void MarchCommentBlock(){};
   void MarchString();
 
-  // Create a token and add it to the token buffer. This will clear the
+  // Create a token from ChunkBuffer and add it to the token buffer. This will clear the
   // ChunkBuffer(regardless if we save literal)
   void CreateToken(tok::TokenKind tokKind, bool bSaveLiteral);
   std::string_view ChunkBufferToStringView();
@@ -152,6 +175,8 @@ protected:
   // Where the lexer should start and end lexing (inclusive).
   const char *Start = nullptr;
   const char *End = nullptr;
+
+  LexBuffer LexerBuffer;
 
   // Used while marching a chunk.
   std::vector<char> ChunkBuffer;
@@ -178,13 +203,28 @@ protected:
 private:
   void PopulateSymbolTree();
   // Returns true if The head is greater or equal to the end
-  bool IsLexComplete() const { return Head >= End; }
+  bool IsLexComplete() const {}
   bool bLastLexChunk = false;
 
   Trie TrieTree;
 
   // The identifier table this lexer owns
   IdentifierTable IdentifierTable;
+
+  EMarchState MarchState = EMarchState::Default;
+
+  //MarchNum func state
+  bool bHasPeriodBeenFound = false;
+  //End of MarchNum func state
+
+  //MarchSymbols func state (Lives here to handle Lex chunk transitions)
+  void ResetMarchSymbolsState();
+  TrieNode *curNode = TrieTree.GetRoot();
+  uint32_t numOfPeeks = 0;
+  int32_t biggestPeekedIdentifierPos = INDEX_NONE;
+  bool bPeekedEndOfChunk = false;
+  //End of MarchSymbols func state
+
 };
 
 } // namespace Brain

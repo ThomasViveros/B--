@@ -11,15 +11,26 @@
 ///
 //===----------------------------------------------------------------------===//
 #pragma once
+#include <string_view>
+
 
 namespace Brain {
 
 namespace tok {
 
+#ifndef NDEBUG
+  constexpr std::string_view debugTokArr[] = {
+#define TOK(X) std::string_view{#X},
+#include "Token/tokenkinds.def"
+#undef TOK
+  };
+#endif
+
 /// Provides a simple uniform namespace for tokens from all C languages.
 enum TokenKind : unsigned short {
 #define TOK(X) X,
 #include "Token/tokenkinds.def"
+#undef TOK
   NUM_TOKENS
 };
 
