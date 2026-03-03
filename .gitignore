@@ -4,4 +4,4 @@
 /.cache/
 *.swp
 *.idx
-
+/.idea/

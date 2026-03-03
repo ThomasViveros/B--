@@ -39,6 +39,7 @@ bool LexBuffer::HasCompleted() const {
 
 LexBuffer::EAdvanceResult LexBuffer::Advance(char &outChar) {
   outChar = Buffer[++Pos];
+  ++CurrentColumn;
 
   // EofPos may be the same as BufferSize, so do it first or else we could
   // incorrectly return eoc
@@ -63,6 +64,7 @@ LexBuffer::EAdvanceResult LexBuffer::AdvanceMany(uint32_t num,
   outChars.insert(outChars.end(), Buffer + Pos, Buffer + Pos + num);
 
   Pos += num;
+  CurrentColumn += num;
 
   // EofPos may be the same as BufferSize, so do it first or else we could
   // incorrectly return eoc
@@ -284,20 +286,6 @@ void Lexer::MarchSymbols() {
       }
     } else {
       // We overshot
-      if (biggestPeekedIdentifierPos == INDEX_NONE) {
-        // We do this so we can advance, otherwise we would advance
-        // INDEXNONE(aka -1) + 1 = 0
-        biggestPeekedIdentifierPos = 0;
-        // We never had an identifier, log error
-        BrainFreeze::SyntaxError newError(
-            "Invalid symbol: " +
-                std::string(ChunkBuffer.begin(), ChunkBuffer.end()),
-            BrainFreeze::ErrorContext(TargetFileName, TargetFilePath,
-                                      CurrentLine + 1,
-                                      CurrentColumn - ChunkBuffer.size()));
-
-        ErrorBuffer.push_back(newError);
-      }
       break;
     }
 
@@ -314,6 +302,22 @@ void Lexer::MarchSymbols() {
     if (peekResult == LexBuffer::eof) {
       break;
     }
+  }
+
+
+  if (biggestPeekedIdentifierPos == INDEX_NONE) {
+    // We do this so we can advance, otherwise we would advance
+    // INDEXNONE(aka -1) + 1 = 0
+    biggestPeekedIdentifierPos = 0;
+    // We never had an identifier, log error
+    // BrainFreeze::SyntaxError newError(
+    //     "Invalid symbol: " +
+    //         std::string(ChunkBuffer.begin(), ChunkBuffer.end()),
+    //     BrainFreeze::ErrorContext(TargetFileName, TargetFilePath,
+    //                               LexerBuffer.GetCurrentLine() + 1,
+    //                               LexerBuffer.GetCurrentColumn() - ChunkBuffer.size()));
+    //
+    // ErrorBuffer.push_back(newError);
   }
 
   LexerBuffer.AdvanceMany(biggestPeekedIdentifierPos + 1, ChunkBuffer);
@@ -347,8 +351,8 @@ void Lexer::MarchSymbols() {
         "Symbols dont make up an identifier: " +
             std::string(ChunkBuffer.begin(), ChunkBuffer.end()),
         BrainFreeze::ErrorContext(TargetFileName, TargetFilePath,
-                                  CurrentLine + 1,
-                                  CurrentColumn - ChunkBuffer.size()));
+                                  LexerBuffer.GetCurrentLine() + 1,
+                                  LexerBuffer.GetCurrentColumn() - ChunkBuffer.size()));
 
     ErrorBuffer.push_back(newError);
     ChunkBuffer.clear();
@@ -372,7 +376,7 @@ void Lexer::MarchBlank() {
   while (isblank(curChar) || curChar == '\n') {
 
     if (curChar == '\n') {
-      NewLine();
+      LexerBuffer.NewLine();
     }
 
     LexBuffer::EAdvanceResult tempResult = LexerBuffer.Advance(curChar);
@@ -416,7 +420,7 @@ void Lexer::MarchCommentLine() {
 
   if (advResult != LexBuffer::EAdvanceResult::eof) {
     // If we didn't hit the eof, that means we hit a newline.
-    NewLine();
+    LexerBuffer.NewLine();
   }
 
   MarchState = EMarchState::Default;

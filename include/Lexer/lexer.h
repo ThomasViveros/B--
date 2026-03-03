@@ -5,7 +5,6 @@
 #include "IdentifierTable.h"
 #include "Token/token.h"
 #include "Token/tokenkinds.h"
-#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <string_view>
@@ -30,7 +29,7 @@ struct PunctuatorTrieNode {
 
 class PunctuatorTrie {
 public:
-  Trie() = default;
+  PunctuatorTrie() = default;
   PunctuatorTrieNode *GetRoot() { return &root; }
 
   void insert(const std::string &word) {
@@ -61,7 +60,7 @@ enum class EMarchState : uint8_t {
   Default, // Undetermined
   Word,    // Alphabetic words. Could be Identifiers, Keywords, etc
   Symbol,  // E.G: * + - @
-  String,
+  String,  // String literal. E.G: "My string"
   Comment,
   Number,
   Blank
@@ -80,7 +79,7 @@ public:
   };
   // Returns wether or not getting the current char would result in a failure.
   // I.E. if we reach eoc or eof
-  bool HasCompleted() const;
+  [[nodiscard]] bool HasCompleted() const;
 
   // Return is in regard to the next char
   EAdvanceResult GetCurrentChar(char &outChar) const;
@@ -94,9 +93,9 @@ public:
   // to the peeked position
   EAdvanceResult Peek(uint32_t offset, char &peekedChar) const;
   // Returns the position to start filling up the buffer
-  char *GetWritingPosition() { return Buffer + Pos + PeekOffset; }
+  [[nodiscard]] char *GetWritingPosition() const { return Buffer + Pos + PeekOffset; }
   // Returns the number of characters we need to fill up the buffer.
-  size_t GetWritingAmount() { return BufferSize - PeekOffset; }
+  [[nodiscard]] size_t GetWritingAmount() const { return BufferSize - PeekOffset; }
   // Marks the eof position for this buffer. Only do this when on the last lex
   // chunk. (EOFPos should be the position AFTER the last char)
   void SetEOFPosition(std::streamsize streamSize);
@@ -115,6 +114,9 @@ public:
   // we ever use peeking in any other march.
   size_t PeekOffset = 0;
 
+  void NewLine() {++CurrentLine;CurrentColumn = 0;}
+  uint64_t GetCurrentLine() const { return CurrentLine; }
+  uint64_t GetCurrentColumn() const { return CurrentColumn; }
 private:
   // The Buffer contents.
   char *Buffer;
@@ -124,6 +126,10 @@ private:
   size_t Pos = 0;
   // The position AFTER the last readable char
   std::streamsize EofPos = INDEX_NONE;
+  // The current line we are on in the file
+  uint64_t CurrentLine = 0;
+  // AKA the index of the char on the line
+  uint64_t CurrentColumn = 0;
 };
 
 class Lexer {
@@ -136,7 +142,7 @@ public:
             const std::string &targetFilePath);
 
 protected:
-  bool issymbol(char c);
+  static bool issymbol(char c);
 
   // These march functions will lex their corresponding character blocks and try
   // to make tokens
@@ -164,16 +170,6 @@ protected:
   // error types but if we ever want specialized information on any error type
   // we will have to refactor this
   std::vector<BrainFreeze::Error> ErrorBuffer;
-
-  // Used to track what line number we are currently on. Helpfull for debugging
-  void NewLine() {
-    CurrentLine++;
-    CurrentColumn = 0;
-  };
-  // The current line we are on
-  int32 CurrentLine = 0;
-  // AKA the index of the char on the line
-  int32 CurrentColumn = 0;
 
   // The name of the file we are currently lexing
   std::string TargetFileName;
