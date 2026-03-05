@@ -1,32 +1,34 @@
 
-program      := { decl } EOF ;
-decl         := importDecl | funDecl | varDecl ;
-importDecl   := "import" IDENT ";" ;
-funDecl      := ["pub"] type IDENT "(" [ params ] ")" block ;
-varDecl      := "let" IDENT [ ":" type ] [ "=" expr ] ";" ;
-params       := param { "," param } ;
-param        := type IDENT;
+program     :=  { decl } EOF ;
+decl        :=  importDecl | classDecl | funDecl | varDecl ";"
+importDecl  :=  "import" IDENT ";"
+funDecl     :=  (["pub"] | ["priv"]) [static] type IDENT "(" [ params ] ")" block
+varDecl     :=  type IDENT [ "=" expr ] ";"
+params      :=  param { "," param }
+param       :=  type IDENT
 
-block        := "{" { stmt } "}" ;
-stmt         := varDecl | exprStmt | ifStmt | whileStmt | returnStmt ;
-exprStmt     := expr ";" ;
-ifStmt       := "if" "(" expr ")" stmt [ "else" stmt ] ;
-whileStmt    := "while" "(" expr ")" stmt ;
-returnStmt   := "return" [ expr ] ";" ;
+block       :=  "{" { stmt } "}"
+stmt        :=  varDecl | exprStmt | ifStmt | whileStmt | returnStmt
+exprStmt    :=  expr ";"
+ifStmt      :=  "if" "(" expr ")" block [{"elseif" "(" expr ")" block }] ["else" block]
+whileStmt   :=  "while" "(" expr ")" block
+returnStmt  :=  "return" [ expr ] ";"
 
-expr	:=	assignment ;
-assignment :=	IDENT "=" assignment | logic_or ;
-logic_or :=	logic_and { "||" logic_and } ;
-logic_and :=	equality { "&&" equality} ;
-equality :=	comparison { ("==" | "!=") comparison }
-comparison :=	term { ( "<" | ">" | "<=" | ">=" ) term } ;
-term	:=	factor { ("+" | "-") factor };
-factor	:=	unary { ("*" | "/") unary };
-unary	:=	("!" | "-") unary | primary ;
-primary	:=	NUMBER | STRING | "true" | "false" | IDENT | "(" expr ")"
+expr	      :=	assignment | valueExpr | booleanExpr;
+valueExpr   :=  IDENT | 
+booleanExpr :=  equality
+assignment  :=	[type] IDENT "=" logic_or ";"
+logic_or    :=	logic_and { "||" logic_and }
+logic_and   :=	equality { "&&" equality}
+equality    :=	comparison { ("==" | "!=") comparison }
+comparison  :=	term { ( "<" | ">" | "<=" | ">=" ) term } 
+term	      :=	factor { ("+" | "-") factor }
+factor	    :=	unary { ("*" | "/") unary }
+unary	      :=	("!" | "-") primary
+primary	    :=	NUMBER | STRING | "true" | "false" | IDENT
 
 
-type	:=	"int32" | "float64" | "bool" | IDENT ;
+type	      :=	[const] ("int32" | "float64" | "bool" | IDENT) (["*"] | ["&"])
 
 
 
