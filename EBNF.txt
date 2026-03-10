@@ -1,40 +1,42 @@
 
-program     :=  { decl } EOF ;
-decl        :=  importDecl | classDecl | funDecl | varDecl ";"
-importDecl  :=  "import" IDENT ";"
-funDecl     :=  (["pub"] | ["priv"]) [static] type IDENT "(" [ params ] ")" block
-varDecl     :=  type IDENT [ "=" expr ] ";"
-params      :=  param { "," param }
-param       :=  type IDENT
+program         :=  { decl } EOF ;
+decl            :=  importDecl | classDecl | funDecl | varDecl
+importDecl      :=  "import" IDENT ";"
+classDecl       :=  "class" IDENT [ ":" IDENT { "," IDENT } ] block
+funDecl         :=  (["pub"] | ["priv"]) type IDENT "(" [ params ] ")" block
+varDecl         :=  type IDENT [ "=" expr ] ";"
+params          :=  param { "," param }
+param           :=  type IDENT
 
-block       :=  "{" { stmt } "}"
-stmt        :=  varDecl | exprStmt | ifStmt | whileStmt | returnStmt
-exprStmt    :=  expr ";"
-ifStmt      :=  "if" "(" expr ")" block [{"elseif" "(" expr ")" block }] ["else" block]
-whileStmt   :=  "while" "(" expr ")" block
-returnStmt  :=  "return" [ expr ] ";"
+block           :=  "{" { stmt } "}"
+stmt            :=  varDecl | exprStmt | ifStmt | whileStmt | returnStmt
+exprStmt        :=  assignment | expr
+ifStmt          :=  "if" "(" expr ")" block [{"elseif" "(" expr ")" block }] ["else" block]
+whileStmt       :=  "while" "(" expr ")" block
+returnStmt      :=  "return" [ expr ] ";"
 
-expr	      :=	assignment | valueExpr | booleanExpr;
-valueExpr   :=  IDENT | 
-booleanExpr :=  equality
-assignment  :=	[type] IDENT "=" logic_or ";"
-logic_or    :=	logic_and { "||" logic_and }
-logic_and   :=	equality { "&&" equality}
-equality    :=	comparison { ("==" | "!=") comparison }
-comparison  :=	term { ( "<" | ">" | "<=" | ">=" ) term } 
-term	      :=	factor { ("+" | "-") factor }
-factor	    :=	unary { ("*" | "/") unary }
-unary	      :=	("!" | "-") primary
-primary	    :=	NUMBER | STRING | "true" | "false" | IDENT
+expr	        :=	logic_or | paren;
+assignment      :=	IDENT "=" logic_or ";"
+logic_or        :=	logic_and { "||" logic_and }
+logic_and       :=	equality { "&&" equality}
+equality        :=	comparison { ("==" | "!=") comparison }
+comparison      :=	term { ( "<" | ">" | "<=" | ">=" ) term }
+term	        :=	factor { ("+" | "-") factor }
+factor	        :=	unary { ("*" | "/") unary }
+unary	        :=	[("!" | "-")] primary
+TODO: For unary should we restrict the unary to specific primarys? For example - doesn't make sense for a boolean
+primary	        :=	NUMBER | STRING | "true" | "false" | IDENT | funInvocation | paren
+TODO: primitive?
+funInvocation   :=  IDENT "(" [ primary {"," primary} ] ")"
+paren           :=  "(" expr ")"
 
-
-type	      :=	[const] ("int32" | "float64" | "bool" | IDENT) (["*"] | ["&"])
+type	        :=	[const | static] ("int32" | "float64" | "bool" | IDENT) (["*"] | ["&"])
 
 
 
 optional = []
 choice = |
-repetition = {}
+repetition = {}  *Can be repeated 0 times
 
 EG:
 

@@ -1,11 +1,13 @@
 #pragma once
+#include <vector>
+
 #include "Token/token.h"
 #include "Token/tokenkinds.h"
 
 namespace Brain {
 
 struct ASTNode {
-  Token Value;
+  Token& Value;
   ASTNode *LHS = nullptr;
   ASTNode *RHS = nullptr;
 };
@@ -51,5 +53,7 @@ private:
   void Unary();
   void Primary();
   void Type();
+
+  std::vector<Token>* TokenBuffer = nullptr;
 };
 } // namespace Brain
