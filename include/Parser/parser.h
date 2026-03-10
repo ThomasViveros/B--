@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdint>
 #include <vector>
 
 #include "Token/token.h"
@@ -7,7 +8,7 @@
 namespace Brain {
 
 struct ASTNode {
-  Token& Value;
+  Token &Value;
   ASTNode *LHS = nullptr;
   ASTNode *RHS = nullptr;
 };
@@ -18,6 +19,8 @@ private:
   ASTNode Root;
 };
 class Parser {
+
+  enum class ParseResult : uint8_t { Succuess, Failure };
 
 public:
   Parser() {}
@@ -52,8 +55,8 @@ private:
   void Factor();
   void Unary();
   void Primary();
-  void Type();
+  ParseResult Type(int64_t index);
 
-  std::vector<Token>* TokenBuffer = nullptr;
+  std::vector<Token> *TokenBuffer = nullptr;
 };
 } // namespace Brain

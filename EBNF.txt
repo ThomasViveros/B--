@@ -3,20 +3,20 @@ program         :=  { decl } EOF ;
 decl            :=  importDecl | classDecl | funDecl | varDecl
 importDecl      :=  "import" IDENT ";"
 classDecl       :=  "class" IDENT [ ":" IDENT { "," IDENT } ] block
-funDecl         :=  (["pub"] | ["priv"]) type IDENT "(" [ params ] ")" block
+funDecl         :=  (["pub"] | ["priv"]) ["static"] IDENT "(" [ params ] ")" type block
 varDecl         :=  type IDENT [ "=" expr ] ";"
 params          :=  param { "," param }
 param           :=  type IDENT
 
 block           :=  "{" { stmt } "}"
 stmt            :=  varDecl | exprStmt | ifStmt | whileStmt | returnStmt
-exprStmt        :=  assignment | expr
+exprStmt        :=  assignment | expr ";"
 ifStmt          :=  "if" "(" expr ")" block [{"elseif" "(" expr ")" block }] ["else" block]
 whileStmt       :=  "while" "(" expr ")" block
 returnStmt      :=  "return" [ expr ] ";"
 
-expr	        :=	logic_or | paren;
-assignment      :=	IDENT "=" logic_or ";"
+expr	        :=	logic_or
+assignment      :=	IDENT "=" logic_or
 logic_or        :=	logic_and { "||" logic_and }
 logic_and       :=	equality { "&&" equality}
 equality        :=	comparison { ("==" | "!=") comparison }
@@ -27,30 +27,16 @@ unary	        :=	[("!" | "-")] primary
 TODO: For unary should we restrict the unary to specific primarys? For example - doesn't make sense for a boolean
 primary	        :=	NUMBER | STRING | "true" | "false" | IDENT | funInvocation | paren
 TODO: primitive?
-funInvocation   :=  IDENT "(" [ primary {"," primary} ] ")"
+primarySuffix   := "(" [primary { "," primary } ] ")" { memberAccess} | { memberAccess }
+memberAccess    :=  ("." | "->") (funInvocation | IDENT)
 paren           :=  "(" expr ")"
 
-type	        :=	[const | static] ("int32" | "float64" | "bool" | IDENT) (["*"] | ["&"])
+type	        :=	[const]  ("int32" | "float64" | "bool" | IDENT) (["*"] | ["&"])
+* We dont put static here because i dont want the user to be able to put static in params,eg MyFunc(static int i)
 
 
+TODO: Namespaces, templates, class inheritance
 
 optional = []
 choice = |
 repetition = {}  *Can be repeated 0 times
-
-EG:
-
-import MyModule;
-
-class MyClass {
-
-public:
-
-pub int32 MyVariable = //Optional pub keyword, could just use public:
-
-void MyFunction(MyType a){
-  if (a.IsTrue()){
-    return;
-  }
-}
-}
