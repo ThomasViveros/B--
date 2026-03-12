@@ -18,9 +18,16 @@ class AST {
 private:
   ASTNode Root;
 };
-class Parser {
+// Whether or not the parse was successful
+enum ParseResult : uint8_t { Succuess, Failure };
+struct ParseOutcome {
+  ParseOutcome(ParseResult result, int64_t index)
+      : Result(result), LastIndex(index) {}
+  ParseResult Result = ParseResult::Failure;
+  int64_t LastIndex = 0;
+};
 
-  enum class ParseResult : uint8_t { Succuess, Failure };
+class Parser {
 
 public:
   Parser() {}
@@ -29,7 +36,7 @@ public:
 private:
   Token *Peek();
   Token *Consume(tok::TokenKind ExpectedToken);
-
+  Token &GetTokenAtIndex(int64_t index) { return (*TokenBuffer)[index]; }
   /*
    * These are the grammar rules described in the EBNF
    * */
@@ -54,8 +61,9 @@ private:
   void Term();
   void Factor();
   void Unary();
-  void Primary();
-  ParseResult Type(int64_t index);
+  ParseOutcome Primary(int64_t index);
+  ParseOutcome PrimarySuffix(int64_t index);
+  ParseOutcome Type(int64_t index);
 
   std::vector<Token> *TokenBuffer = nullptr;
 };

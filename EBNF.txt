@@ -25,11 +25,11 @@ term	        :=	factor { ("+" | "-") factor }
 factor	        :=	unary { ("*" | "/") unary }
 unary	        :=	[("!" | "-")] primary
 TODO: For unary should we restrict the unary to specific primarys? For example - doesn't make sense for a boolean
-primary	        :=	NUMBER | STRING | "true" | "false" | IDENT | funInvocation | paren
+primary	        :=	NUMBER | STRING | "true" | "false" | IDENT primarySuffix | "(" expr ")"
 TODO: primitive?
-primarySuffix   := "(" [primary { "," primary } ] ")" { memberAccess} | { memberAccess }
-memberAccess    :=  ("." | "->") (funInvocation | IDENT)
-paren           :=  "(" expr ")"
+primarySuffix   := "(" [ argList ] ")" { memberAccess} | { memberAccess }
+memberAccess    :=  ("." | "->") (IDENT | IDENT "(" [ argList ] ")")
+arg_list := primary { "," primary }
 
 type	        :=	[const]  ("int32" | "float64" | "bool" | IDENT) (["*"] | ["&"])
 * We dont put static here because i dont want the user to be able to put static in params,eg MyFunc(static int i)
