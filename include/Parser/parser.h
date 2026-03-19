@@ -7,8 +7,6 @@
 
 namespace Brain {
 
-
-
 enum ASTNodeKind : uint8_t {
   unknown,
   program,
@@ -36,24 +34,18 @@ enum ASTNodeKind : uint8_t {
   type
 };
 
-  //TODO
+// TODO
 struct ASTNode {
+  ASTNode() = default;
+  ASTNode(ASTNodeKind nodeKind, Token *token = nullptr,
+          const std::vector<ASTNode *> &children = {});
   ASTNodeKind Kind = unknown;
-  //Some nodes may not have this set, instead relying on the nodes.
-  Token Value;
-  //Some nodes may not have any children, instead just holding a value.
-  std::vector<ASTNode*> ChildNodes;
+  // Some nodes may not have this set, instead relying on the nodes.
+  Token *Value;
+  // Some nodes may not have any children, instead just holding a value.
+  std::vector<ASTNode *> ChildNodes;
 };
 
-
-
-  struct Type : ASTNode {
-    //TODO: Should we make these separate nodes?
-    bool bIsConst = false;
-    Token TypeTok;
-    //Could be & or * or none
-    tok::TokenKind TypeSuffix  = tok::TokenKind::unknown;
-  };
 class AST {
 
 private:
@@ -62,18 +54,19 @@ private:
 // Whether or not the parse was successful
 enum ParseResult : uint8_t { Succuess, Failure };
 struct ParseOutcome {
-  ParseOutcome(ParseResult result, int64_t index)
-      : Result(result), LastIndex(index) {}
+  ParseOutcome(ParseResult result, int64_t index,
+               ASTNode *generatedNode = nullptr)
+      : Result(result), LastIndex(index), GeneratedNode(generatedNode) {}
   ParseResult Result = ParseResult::Failure;
   int64_t LastIndex = 0;
-  ASTNode* GeneratedNode = nullptr;
+  ASTNode *GeneratedNode = nullptr;
 };
 
 /*
  * Parse rules. Each function will represent a language rule.
- * The way the functions will work is they will take the token index to start on,
- * and they will return a ParseOutcome wich will say whether or not the parse failed and will
- * have the next index to start parsing on.
+ * The way the functions will work is they will take the token index to start
+ * on, and they will return a ParseOutcome wich will say whether or not the
+ * parse failed and will have the next index to start parsing on.
  */
 
 class Parser {
@@ -86,6 +79,8 @@ private:
   Token *Peek();
   Token *Consume(tok::TokenKind ExpectedToken);
   Token &GetTokenAtIndex(int64_t index) { return (*TokenBuffer)[index]; }
+  ASTNode *GenerateASTNode(ASTNodeKind nodeKind, Token *token = nullptr,
+                           const std::vector<ASTNode *> &children = {});
   /*
    * These are the grammar rules described in the EBNF
    * */

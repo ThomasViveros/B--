@@ -3,8 +3,19 @@
 #include "Token/tokenkinds.h"
 #include <cstdint>
 using namespace Brain;
+ASTNode::ASTNode(ASTNodeKind nodeKind, Token *token,
+                 const std::vector<ASTNode *> &children) {
+  Kind = nodeKind;
+  Value = token;
+  ChildNodes.insert(ChildNodes.end(), children.begin(), children.end());
+}
 
 Token *Parser::Peek() {}
+
+ASTNode *Parser::GenerateASTNode(ASTNodeKind nodeKind, Token *token,
+                                 const std::vector<ASTNode *> &children) {
+  return new ASTNode(nodeKind, token, children);
+}
 
 ParseOutcome Parser::Primary(int64_t index) {
 
@@ -49,34 +60,39 @@ ParseOutcome Parser::ArgList(int64_t index) {
   if (r.Result == Failure) {
     return {Failure, index};
   }
+  std::vector<ASTNode *> argNodes;
 
-  //Optional additional args
+  // Optional additional args
   while (true) {
     if (GetTokenAtIndex(++index).TokenType == tok::comma) {
       if (ParseOutcome po = Primary(++index); po.Result == Succuess) {
-        r = po;
-      }else {
-        break;
+        argNodes.push_back(po.GeneratedNode);
+      } else {
+        return {Failure, index};
       }
-    }else {
-      break;
+    } else {
+      return {Succuess, index, GenerateASTNode(arguments, nullptr, argNodes)};
     }
   }
+
   return r;
 }
 ParseOutcome Parser::Type(int64_t index) {
+  bool bIsConst = false;
   // First check for const
-  if (TokenBuffer->at(index).TokenType == tok::kw_const) {
+  if (GetTokenAtIndex(index).TokenType == tok::kw_const) {
     ++index;
+    bIsConst = true;
   }
   // Then see if the token is a type
-  switch (TokenBuffer->at(index++).TokenType) {
+  Token *token = &GetTokenAtIndex(index);
+  switch (token->TokenType) {
   case tok::kw_int:
   case tok::kw_float:
   case tok::kw_bool:
   case tok::kw_char:
   case tok::identifier:
-    return {Succuess, index};
+    return {Succuess, index, GenerateASTNode(ASTNodeKind::type, token)};
   default:
     // The token wasnt a type, return fail
     return {Failure, index};
