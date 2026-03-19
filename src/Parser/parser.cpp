@@ -31,11 +31,11 @@ ParseOutcome Parser::PrimarySuffix(int64_t index) {
 
   // primarySuffix   := "(" [ argList ] ")" { memberAccess} | { memberAccess }
   if (GetTokenAtIndex(index).TokenType != tok::l_paren) {
-    return ParseResult::Failure;
+    return {Failure, index};
   }
   // Optional argument list
   // TODO: we have to track how far the index went
-  index = ArgList(++index).Index;
+  index = ArgList(++index).LastIndex;
 
   if (GetTokenAtIndex(index).TokenType != tok::r_paren) {
     return ParseOutcome(Failure, index);
@@ -45,23 +45,40 @@ ParseOutcome Parser::PrimarySuffix(int64_t index) {
 }
 ParseOutcome Parser::ArgList(int64_t index) {
   // arg_list := primary { "," primary }
-  Primary(index);
+  ParseOutcome r = Primary(index);
+  if (r.Result == Failure) {
+    return {Failure, index};
+  }
+
+  //Optional additional args
+  while (true) {
+    if (GetTokenAtIndex(++index).TokenType == tok::comma) {
+      if (ParseOutcome po = Primary(++index); po.Result == Succuess) {
+        r = po;
+      }else {
+        break;
+      }
+    }else {
+      break;
+    }
+  }
+  return r;
 }
 ParseOutcome Parser::Type(int64_t index) {
   // First check for const
   if (TokenBuffer->at(index).TokenType == tok::kw_const) {
-    index++;
+    ++index;
   }
   // Then see if the token is a type
-  switch (TokenBuffer->at(index).TokenType) {
+  switch (TokenBuffer->at(index++).TokenType) {
   case tok::kw_int:
   case tok::kw_float:
   case tok::kw_bool:
   case tok::kw_char:
   case tok::identifier:
-    return ParseOutcome(Succuess, index);
+    return {Succuess, index};
   default:
     // The token wasnt a type, return fail
-    return ParseOutcome(Failure, index);
+    return {Failure, index};
   }
 }
